@@ -1,0 +1,107 @@
+\name{GDPv56}
+\docType{data}
+\alias{GDPv56}
+\title{International Gross Domestic Product}
+\description{
+The dataset includes GDP's of 90 countries from 1960 to 1980. The
+frequency is yearly. 
+}
+\usage{data(GDPv56)}
+\format{
+A matrix containing 90 columns, one per country. Dates are reported as
+rownames().  
+\describe{
+\item{ARGENTINA}{GDP of ARGENTINA}
+\item{AUSTRALIA}{GDP of AUSTRALIA}
+\item{AUSTRIA}{GDP of AUSTRIA}
+\item{BURUNDI}{GDP of BURUNDI}
+\item{BELGIUM}{GDP of BELGIUM}
+\item{BENIN}{GDP of BENIN}
+\item{BURKINA FASO}{GDP of BURKINA FASO}
+\item{BOLIVIA}{GDP of BOLIVIA}
+\item{BRAZIL}{GDP of BRAZIL}
+\item{CANADA}{GDP of CANADA}
+\item{SWITZERLAND}{GDP of SWITZERLAND}
+\item{CHILE}{GDP of CHILE}
+\item{COTE D`IVOIRE}{GDP of COTE D`IVOIRE}
+\item{CAMEROON}{GDP of CAMEROON}
+\item{CONGO REPUBLIC OF}{GDP of CONGO REPUBLIC OF}
+\item{COLOMBIA}{GDP of COLOMBIA}
+\item{COMOROS}{GDP of COMOROS}
+\item{CAPE VERDE}{GDP of CAPE VERDE}
+\item{COSTA RICA}{GDP of COSTA RICA}
+\item{DENMARK}{GDP of DENMARK}
+\item{DOMINICAN REPUBLIC}{GDP of DOMINICAN REPUBLIC}
+\item{ALGERIA}{GDP of ALGERIA}
+\item{ECUADOR}{GDP of ECUADOR}
+\item{EGYPT}{GDP of EGYPT}
+\item{SPAIN}{GDP of SPAIN}
+\item{FINLAND}{GDP of FINLAND}
+\item{FRANCE}{GDP of FRANCE}
+\item{GABON}{GDP of GABON}
+\item{UNITED KINGDOM}{GDP of UNITED KINGDOM}
+\item{GHANA}{GDP of GHANA}
+\item{GUINEA}{GDP of GUINEA}
+\item{GAMBIA THE}{GDP of GAMBIA THE}
+\item{GUINEA-BISSAU}{GDP of GUINEA-BISSAU}
+\item{GREECE}{GDP of GREECE}
+\item{GUATEMALA}{GDP of GUATEMALA}
+\item{HONG KONG}{GDP of HONG KONG}
+\item{HONDURAS}{GDP of HONDURAS}
+\item{INDONESIA}{GDP of INDONESIA}
+\item{INDIA}{GDP of INDIA}
+\item{IRELAND}{GDP of IRELAND}
+\item{IRAN}{GDP of IRAN}
+\item{ICELAND}{GDP of ICELAND}
+\item{ISRAEL}{GDP of ISRAEL}
+\item{ITALY}{GDP of ITALY}
+\item{JAMAICA}{GDP of JAMAICA}
+\item{JORDAN}{GDP of JORDAN}
+\item{JAPAN}{GDP of JAPAN}
+\item{KENYA}{GDP of KENYA}
+\item{KOREA REPUBLIC OF}{GDP of KOREA REPUBLIC OF}
+\item{SRI LANKA}{GDP of SRI LANKA}
+\item{LESOTHO}{GDP of LESOTHO}
+\item{LUXEMBOURG}{GDP of LUXEMBOURG}
+\item{MOROCCO}{GDP of MOROCCO}
+\item{MADAGASCAR}{GDP of MADAGASCAR}
+\item{MEXICO}{GDP of MEXICO}
+\item{MALI}{GDP of MALI}
+\item{MOZAMBIQUE}{GDP of MOZAMBIQUE}
+\item{MAURITIUS}{GDP of MAURITIUS}
+\item{MALAWI}{GDP of MALAWI}
+\item{MALAYSIA}{GDP of MALAYSIA}
+\item{NIGERIA}{GDP of NIGERIA}
+\item{NICARAGUA}{GDP of NICARAGUA}
+\item{NETHERLANDS}{GDP of NETHERLANDS}
+\item{NORWAY}{GDP of NORWAY}
+\item{NEW ZEALAND}{GDP of NEW ZEALAND}
+\item{PAKISTAN}{GDP of PAKISTAN}
+\item{PANAMA}{GDP of PANAMA}
+\item{PERU}{GDP of PERU}
+\item{PHILIPPINES}{GDP of PHILIPPINES}
+\item{PORTUGAL}{GDP of PORTUGAL}
+\item{PARAGUAY}{GDP of PARAGUAY}
+\item{RWANDA}{GDP of RWANDA}
+\item{SENEGAL}{GDP of SENEGAL}
+\item{SINGAPORE}{GDP of SINGAPORE}
+\item{EL SALVADOR}{GDP of EL SALVADOR}
+\item{SWEDEN}{GDP of SWEDEN}
+\item{SYRIA}{GDP of SYRIA}
+\item{CHAD}{GDP of CHAD}
+\item{TOGO}{GDP of TOGO}
+\item{THAILAND}{GDP of THAILAND}
+\item{TRINIDAD AND TOBAGO}{GDP of TRINIDAD AND TOBAGO}
+\item{TURKEY}{GDP of TURKEY}
+\item{TAIWAN}{GDP of TAIWAN}
+\item{UGANDA}{GDP of UGANDA}
+\item{URUGUAY}{GDP of URUGUAY}
+\item{UNITED STATES}{GDP of UNITED STATES}
+\item{VENEZUELA}{GDP of VENEZUELA}
+\item{SOUTH AFRICA}{GDP of SOUTH AFRICA}
+\item{ZAMBIA}{GDP of ZAMBIA}
+\item{ZIMBABWE}{GDP of ZIMBABWE}
+}
+}
+\source{TBA}
+\keyword{datasets}

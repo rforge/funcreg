@@ -1,0 +1,15 @@
+useDynLib(funcreg)
+import(stats)
+importFrom(fda, create.bspline.basis, eval.penalty, eval.basis)
+importFrom(methods, is)
+importFrom(graphics, abline, legend, lines, par, plot, points)
+
+export(coefEst, fdaCV, getLam, getLandKopt, getLandK, nlCoefEst,
+       nlFdaCV, nlGetLandK, nlGetLam, nlGetLandKopt, print.myfda,
+       plot.myfda)
+ 
+S3method(print, myfda)
+S3method(plot, myfda)
+
+
+

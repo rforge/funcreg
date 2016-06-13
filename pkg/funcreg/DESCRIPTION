@@ -1,0 +1,12 @@
+Package: funcreg
+Version: 0.0-1
+Date: 2016-06-10
+Title: Functional Regression Estimation 
+Author: Pierre Chausse <pchausse@uwaterloo.ca>
+Maintainer: Pierre Chausse <pchausse@uwaterloo.ca>
+Description: This package is complementary to the fda package. It includes function to choose smoothing parameters and to estimate models with multiple functional regressors.
+Depends: R (>= 3.2.5), fda
+Suggests:
+Imports: stats, methods, graphics
+License: GPL (>= 2) 
+
