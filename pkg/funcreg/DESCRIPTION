@@ -5,7 +5,7 @@ Title: Functional Regression Estimation
 Author: Pierre Chausse <pchausse@uwaterloo.ca>
 Maintainer: Pierre Chausse <pchausse@uwaterloo.ca>
 Description: This package is complementary to the fda package. It includes function to choose smoothing parameters and to estimate models with multiple functional regressors.
-Depends: R (>= 3.2.5), fda
+Depends: R (>= 3.2.5), fda, lattice
 Suggests:
 Imports: stats, methods, graphics
 License: GPL (>= 2) 

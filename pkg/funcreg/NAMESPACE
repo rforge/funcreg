@@ -1,15 +1,25 @@
 useDynLib(funcreg)
 import(stats)
-importFrom(fda, create.bspline.basis, eval.penalty, eval.basis)
+importFrom(fda, create.bspline.basis, eval.penalty, eval.basis,
+           fd, create.constant.basis, bifd, bifdPar, fdPar,
+           smooth.basis, plot.fd, is.fd, inprod, symsolve,
+           eval.fd, eval.bifd)
+importFrom(lattice, wireframe)
 importFrom(methods, is)
 importFrom(graphics, abline, legend, lines, par, plot, points)
 
+
 export(coefEst, fdaCV, getLam, getLandKopt, getLandK, nlCoefEst,
        nlFdaCV, nlGetLandK, nlGetLam, nlGetLandKopt, print.myfda,
-       plot.myfda)
+       plot.myfda, funcreg, vcov.funcreg, summary.funcreg,
+       plotConfInt, plotCoef, print.funcreg, fitted.funcreg)
  
 S3method(print, myfda)
 S3method(plot, myfda)
+S3method(print, funcreg)
+S3method(summary, funcreg)
+S3method(vcov, funcreg)
+S3method(fitted, funcreg)
 
 
 
