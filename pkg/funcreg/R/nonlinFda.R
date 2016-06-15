@@ -34,7 +34,7 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
         ans <- list(coefficients=matrix(res$coef, k, n), convergence=res$info,
                     t=t, y=y, basis=basis, link=function(x) exp(x),
                     lambda=lam, L=L, type=type, maxi=maxit, tol=tol)
-        class(ans) <- "myfda"
+        class(ans) <- c("myfda")
         ans
     }
 
@@ -194,3 +194,33 @@ nlGetLandKopt <- function(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
     }
 
 
+makeLinFda <- function(obj, npoints=200)
+    {
+        if (class(obj) != "myfda")
+            stop("Only applicable to objects of class myfda")
+        type <- strtrim(obj$type, 3)
+        if (type=="Lin")
+            return(obj)
+        rangeval <- obj$basis$rangeval
+        t <- seq(rangeval[1], rangeval[2], length.out=npoints)
+        xhat <- eval.basis(t, obj$basis)
+        xhat <- xhat%*%obj$coefficients
+        xhat <- obj$link(xhat)
+        xhat <- smooth.basis(t, xhat, fdPar(obj$basis))$fd
+        obj$coefficients <- xhat$coefs
+        obj$link <- function(x) x
+        obj$type <- "Linear FDA fitted from a Non-linear FDA"
+        obj
+    }
+    
+logFda <- function(obj)
+    {
+        if (class(obj) != "myfda")
+            stop("Only applicable to objects of class myfda")
+        if (obj$type=="Lin")
+            stop("Only applicable to Non-linear FDA")        
+        obj$link <- function(x) x
+        obj$type <- "Linear FDA obtained by taking the log od Non-linear FDA"
+        obj$y <- log(obj$y)
+        obj
+    }

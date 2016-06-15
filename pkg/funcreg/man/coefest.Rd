@@ -1,7 +1,9 @@
 \name{coefEst}
 \alias{coefEst}
 \alias{nlCoefEst}
-	
+\alias{makeLinFda}
+\alias{logFda}
+
 \title{Functional Data Fit}
 
 \description{
@@ -12,8 +14,13 @@
 \usage{
 coefEst(y, t, lam, k, L=2, rangeval = c(0,1),
         create_basis=create.bspline.basis, ...)
+
 nlCoefEst(y, t, lam, k, L=2, rangeval = c(0,1),
           create_basis=create.bspline.basis, maxit=100, tol=1e-8, ...)
+
+makeLinFda(obj, npoints=200)
+
+logFda(obj)
 }
 \arguments{
 \item{y}{A \eqn{T \times n} matrix of data points, when \eqn{T} is the number
@@ -43,14 +50,28 @@ nlCoefEst(y, t, lam, k, L=2, rangeval = c(0,1),
 \item{tol}{The tolerance parameter for the stopping rule of the Newton
   method}
 
-\item{...}{Other argument that is passed to \code{create_basis}  (see \code{\link{create.bspline.basis}})}
+\item{...}{Other argument that is passed to \code{create_basis}  (see
+  \code{\link{create.bspline.basis}})}
+
+\item{obj}{Object of class "myfda"}
+
+\item{npoints}{Number of points to fit the linear FDA to the non-linear one}
 }
 
 \details{
 In \code{coefEst}, the functional data is a linear combination of the
 basis, while in \code{nlCoefEst} it is the exponential of the linear
 combination of the basis. The latter is used when we want to force the
-functional data curve to be positive}
+functional data curve to be positive,
+
+\code{makeLinFda} will transform the nonlinear fit to a linear FDA by
+fitting the nonlinear curve to a linear combination of the same
+basis. The curve is almost identical and it is transformed this way
+by \code{\link{funcreg}}
+
+\code{logFDA} transforms the non-linear FDA into a linear FDA. It only
+redefine the \code{link} equation and take the log of the observed data.
+}
 
 \value{
 It returns an object of 'class' "myfda" 
@@ -92,6 +113,11 @@ res
 res <- nlCoefEst(y=GDPv56, t=t, lam=0.003, k=15)
 res
 
+resLin <- makeLinFda(res)
+resLin
+
+logres <- logFda(res)
+plot(res,1:2)
 
 }
 

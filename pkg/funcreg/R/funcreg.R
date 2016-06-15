@@ -9,14 +9,29 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         namex <- colnames(attr(tr, "factors"))
         all <- eval(attr(tr, "variables"))
         Yfd <- all[[1]]
+        if (strtrim(Yfd$type, 3)=="Non")
+            Yfd <- makeLinFda(Yfd)
         data <- list(t=Yfd$t, Y=Yfd$y)
-        Yfd <- fd(Yfd$coef, Yfd$basis)
+        if (!is.null(colnames(Yfd$y)))
+            tmp <- colnames(Yfd$y)
+        else
+            tmp <- paste(namey, "_", 1:ncol(Yfd$y), sep="")
+        Yfd <- fd(Yfd$coef, Yfd$basis, fdnames=list("time", tmp, namey))
         Xfd <- all[-1]
         names(Xfd) <- namex
         Intercept <- attr(tr, "intercept")
         nx <- length(Xfd)
         for (i in 1:nx)
-            Xfd[[i]] <- fd(Xfd[[i]]$coef, Xfd[[i]]$basis)
+            {
+                if (!is.null(colnames(Xfd[[i]]$y)))
+                    tmp <- colnames(Xfd[[i]]$y)
+                else
+                    tmp <- paste(namex[i], "_", 1:ncol(Xfd[[i]]$y), sep="")
+                if (strtrim(Xfd[[i]]$type, 3)=="Non")
+                    Xfd[[i]] <- makeLinFda(Xfd[[i]])
+                Xfd[[i]] <- fd(Xfd[[i]]$coefficients, Xfd[[i]]$basis,
+                               fdnames=list("time", tmp, namex[i]))
+            }
         rangeval <- Yfd$basis$rangeval        
         chk <- sapply(1:nx, function(i) all(Xfd[[i]]$basis$rangeval != rangeval))
         if (any(chk))
@@ -439,6 +454,8 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                     yhatmat <- yhatmat + eval.fd(tfine, xbetafd[[i]])  
             }
 	yhatfd = smooth.basis(tfine, yhatmat, ybasis)$fd
+        yhatfd$fdnames <- yfdobj$fdnames
+        yhatfd$fdnames[[3]] <- "fitted"
 	linmodList = list(betaestbifdList = betafd, yhatfdobj = yhatfd,
             xbetafd = xbetafd, Hj = Hinprod, Cmat = Cmat)
 	if (Intercept)
@@ -477,6 +494,10 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                     }
 		linmodList$covPar <- Sig
 		linmodList$data <- data
+                resid <- yfdobj-yhatfd
+                resid$fdnames <- yfdobj$fdnames
+                resid$fdnames[[3]] <- "residuals"
+                linmodList$residuals <- resid
             }
 
 ### Computing the generalized cross-validation
@@ -936,12 +957,7 @@ print.funcreg <- function(x, ...)
     }
 
 fitted.funcreg <- function(object, ...)
-    {
-        object$res$yhatfdobj
-    }
+    object$res$yhatfdobj
 
 residuals.funcreg <- function(object, ...)
-    {
-        e <- object$Y-object$res$yhatfdobj
-        e
-    }
+    object$res$residuals

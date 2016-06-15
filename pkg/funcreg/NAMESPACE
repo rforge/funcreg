@@ -12,7 +12,8 @@ importFrom(graphics, abline, legend, lines, par, plot, points)
 export(coefEst, fdaCV, getLam, getLandKopt, getLandK, nlCoefEst,
        nlFdaCV, nlGetLandK, nlGetLam, nlGetLandKopt, print.myfda,
        plot.myfda, funcreg, vcov.funcreg, summary.funcreg,
-       plotConfInt, plotCoef, print.funcreg, fitted.funcreg, residuals.funcreg)
+       plotConfInt, plotCoef, print.funcreg, fitted.funcreg, residuals.funcreg,
+       makeLinFda, logFda)
  
 S3method(print, myfda)
 S3method(plot, myfda)

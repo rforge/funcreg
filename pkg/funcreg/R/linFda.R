@@ -15,6 +15,8 @@
 
 #### Function to get the coefficients
 #### Y is a matrix, not a list (txn)
+
+
 coefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
                     create_basis=create.bspline.basis, ...)
     {
