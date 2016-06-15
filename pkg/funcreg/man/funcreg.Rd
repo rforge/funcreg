@@ -3,6 +3,7 @@
 \alias{summary.funcreg}
 \alias{print.funcreg}
 \alias{fitted.funcreg}
+\alias{residuals.funcreg}
 
 \title{Linear Functional Regression}
 
@@ -21,6 +22,8 @@ funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
 \method{summary}{funcreg}(object, ...)
 
 \method{fitted}{funcreg}(object, ...)
+
+\method{residuals}{funcreg}(object, ...)
 }
 
 \arguments{
@@ -59,8 +62,9 @@ funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
  \item{CstInt}{If \code{TRUE}, the intercept is assumed constant. If
    \code{FALSE}, it is a one dimensional functional parameter.}
 
- \item{...}{Other argument that is passed to \code{create_basis}
-   (see \code{\link{create.bspline.basis}})}
+ \item{...}{For \code{funcreg}, it is other argument that is passed to \code{create_basis}
+   (see \code{\link{create.bspline.basis}}). For the methods, it is the
+   other arguments to pass to other objects.}
 }
 
 \value{
@@ -103,5 +107,7 @@ res
 summary(res)
 
 plot(fitted(res))
+
+plot(residuals(res))
 }
 

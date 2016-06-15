@@ -939,3 +939,9 @@ fitted.funcreg <- function(object, ...)
     {
         object$res$yhatfdobj
     }
+
+residuals.funcreg <- function(object, ...)
+    {
+        e <- object$Y-object$res$yhatfdobj
+        e
+    }
