@@ -222,5 +222,6 @@ logFda <- function(obj)
         obj$link <- function(x) x
         obj$type <- "Linear FDA obtained by taking the log od Non-linear FDA"
         obj$y <- log(obj$y)
+        obj$y[obj$y==-Inf] <- NA
         obj
     }

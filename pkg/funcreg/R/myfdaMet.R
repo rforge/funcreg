@@ -19,7 +19,7 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, ...)
                 basisval <- eval.basis(t,x$basis)
                 yhat <- basisval%*%x$coefficients
                 yhat <- x$link(yhat)
-                ylim <- range(yhat)
+                ylim <- range(yhat, na.rm=TRUE)
                 plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
                      ylim = ylim, type="l", ...)
                 for (i in 2:ncol(x$y))
@@ -29,7 +29,7 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, ...)
                 yhat <- basisval%*%x$coefficients[,which]
                 yhat <- as.matrix(yhat)
                 yhat <- x$link(yhat)                
-                ylim <- range(c(yhat, x$y[,which]))
+                ylim <- range(c(yhat, x$y[,which]), na.rm=TRUE)
                 plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
                      ylim = ylim, type="l", ...)
                 if (addpoints)
