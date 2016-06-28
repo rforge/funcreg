@@ -3,20 +3,20 @@ import(stats)
 importFrom(fda, create.bspline.basis, eval.penalty, eval.basis,
            fd, create.constant.basis, bifd, bifdPar, fdPar,
            smooth.basis, plot.fd, is.fd, inprod, symsolve,
-           eval.fd, eval.bifd)
+           eval.fd, eval.bifd, as.fd)
 importFrom(lattice, wireframe)
 importFrom(methods, is)
-importFrom(graphics, abline, legend, lines, par, plot, points)
-
+importFrom(graphics, abline, legend, lines, par, plot, points, title)
 
 export(coefEst, fdaCV, getLam, getLandKopt, getLandK, nlCoefEst,
        nlFdaCV, nlGetLandK, nlGetLam, nlGetLandKopt, print.myfda,
        plot.myfda, funcreg, vcov.funcreg, summary.funcreg,
        plotConfInt, plotCoef, print.funcreg, fitted.funcreg, residuals.funcreg,
-       makeLinFda, logFda)
+       makeLinFda, logFda, as.fd.myfda, funcregCV)
  
 S3method(print, myfda)
 S3method(plot, myfda)
+S3method(as.fd, myfda)
 S3method(print, funcreg)
 S3method(summary, funcreg)
 S3method(vcov, funcreg)

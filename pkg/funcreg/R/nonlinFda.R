@@ -225,3 +225,11 @@ logFda <- function(obj)
         obj$y[obj$y==-Inf] <- NA
         obj
     }
+
+as.fd.myfda <- function(x, fdnames=NULL, npoints=200, ...)
+    {
+        if (strtrim(x$type,3) == "Non")
+            x <- makeLinFda(x, npoints=npoints)
+        xfd <- fd(x$coef, x$basis, fdnames=fdnames)
+        xfd
+    }

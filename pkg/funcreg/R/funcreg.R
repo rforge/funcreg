@@ -1,5 +1,5 @@
 funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
-                    k, regularized=TRUE, CstInt=FALSE, ...)
+                     k, regularized=TRUE, CstInt=FALSE, CV=FALSE, ...)
     {
         tr <- terms(form)
         call <- match.call()
@@ -7,7 +7,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             stop("You cannot run a functional regression without response variable")
         namey <- rownames(attr(tr, "factors"))[1]
         namex <- colnames(attr(tr, "factors"))
-        all <- eval(attr(tr, "variables"))
+        all <- eval(attr(tr, "variables"),  )
         Yfd <- all[[1]]
         if (strtrim(Yfd$type, 3)=="Non")
             Yfd <- makeLinFda(Yfd)
@@ -16,7 +16,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             tmp <- colnames(Yfd$y)
         else
             tmp <- paste(namey, "_", 1:ncol(Yfd$y), sep="")
-        Yfd <- fd(Yfd$coef, Yfd$basis, fdnames=list("time", tmp, namey))
+        Yfd <- as.fd(Yfd, fdnames=list("time", tmp, namey))
         Xfd <- all[-1]
         names(Xfd) <- namex
         Intercept <- attr(tr, "intercept")
@@ -27,10 +27,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                     tmp <- colnames(Xfd[[i]]$y)
                 else
                     tmp <- paste(namex[i], "_", 1:ncol(Xfd[[i]]$y), sep="")
-                if (strtrim(Xfd[[i]]$type, 3)=="Non")
-                    Xfd[[i]] <- makeLinFda(Xfd[[i]])
-                Xfd[[i]] <- fd(Xfd[[i]]$coefficients, Xfd[[i]]$basis,
-                               fdnames=list("time", tmp, namex[i]))
+                Xfd[[i]] <- as.fd(Xfd[[i]], fnames=list("time", tmp, namex[i]))
             }
         rangeval <- Yfd$basis$rangeval        
         chk <- sapply(1:nx, function(i) all(Xfd[[i]]$basis$rangeval != rangeval))
@@ -76,359 +73,161 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
 		start <- start + 2		
             }
 	chk <- TRUE
-	while (chk)
+        obj <- .prepMat(Xfd, Yfd, betaList)
+        obj$data <- data
+        resFin <- .funcregFit(obj)
+        if (CV)
             {
-                resFin <- try(.funcregFit(Xfd, Yfd, betaList,
-                                          Intercept=(Intercept==1),data=data,
-                                          regularized=regularized),silent=TRUE) 
-                if (class(resFin) == "try-error")
-                    {
-                        regularized = regularized*10
-                    } else {
-                        chk <- FALSE
-                    }
+                res2 <- .funcregCV(obj)
+                resFin$CV <- res2$CV
+                resFin$cvInfo <- res2$cvInfo
             }
         ans <- list(res = resFin, lambda = lambda,
-                    X = Xfd, Y = Yfd, LD=LD, regularized=regularized, data=data,
-                    Intercept=Intercept, call=call)
+                    X = Xfd, Y = Yfd, LD=LD, data=data,
+                    Intercept=Intercept, call=call,obj=obj)        
         class(ans) <- "funcreg"
         ans
     }
 
+
+### Computes all what is needed for the Fortran code.
+### All of it is independent on the lambda's
+####################################################
+.prepMat <- function (xfdobjList, yfdobj, betaList)    
+    {
+        nx <- length(xfdobjList)
+        n <- ncol(yfdobj$coefs)
+        intercept <- nx == (length(betaList)-1)
+        if (intercept)
+            {
+                k0 = betaList[[1]]$fd$basis$nbasis
+                lam0 <- betaList[[1]]$lambda
+                R0 <- eval.penalty(betaList[[1]]$fd$basis, betaList[[1]]$Lfd)
+                ipaa <- inprod(betaList[[1]]$fd$basis, betaList[[1]]$fd$basis)
+                ipya <- inprod(yfdobj$basis, betaList[[1]]$fd$basis)
+                Fmat <- crossprod(yfdobj$coefs, ipya)
+            }else {
+                k0 <- 0; lam0 <- 0
+                R0 <- 0; ipaa <- 0
+                ipya <- 0
+                Fmat <- 0
+            }
+        kb <- vector()
+        kx <- vector()
+        ky <- yfdobj$basis$nbasis
+        lam <- vector()
+        if (nx == 0)
+            return(list(k0=k0, lam0=lam0, R0=R0, ipaa=ipaa, ipya=ipya, ky=ky,
+                        kx=kx))
+        for (i in 1:nx)
+            {
+                kx <- c(kx, xfdobjList[[i]]$basis$nbasis)
+                kb <- rbind(kb, c(betaList[[i+intercept]]$bifd$tbasis$nbasis,
+                                  betaList[[i+intercept]]$bifd$sbasis$nbasis))
+                lam <- rbind(lam, c(betaList[[i+intercept]]$lambdat,
+                                    betaList[[i+intercept]]$lambdas))
+            }
+        if (intercept)
+            {
+                ipabt <- array(0, c(k0, max(kb[,2]), nx))
+                
+            } else {
+                ipabt <- 0
+
+            }
+        iplbs <- ipbs <- array(0, c(max(kb[,2]), max(kb[,2]), nx))
+        iplbt <- ipbt <- array(0, c(max(kb[,1]), max(kb[,1]), nx))
+        H <- array(0, c(n, max(kb[,2]), nx))
+        ## ir order for say 3 X's
+        ## b1b1', b2b1', b3b1', b2b2', b3b2', b3b3'
+        ipbbt <- array(0, c(max(kb[,1]), max(kb[,1]), nx*(nx+1)/2))
+        bx <- array(0, c(max(kx), n, nx))
+        Rs <- Rt <- array(0, c(max(kb[,1])*max(kb[,2]),
+                               max(kb[,1])*max(kb[,2]), nx))
+        G <- array(0, c(n, max(kb[,1]),nx))
+        by <- yfdobj$coefs
+        l <- 1
+        for (i in 1:nx)
+            {
+                if (intercept)
+                    {
+                        ipabt[,1:kb[i,1],i] <- inprod(betaList[[1]]$fd$basis,
+                                                      betaList[[i+1]]$bifd$tbasis)
+                    }
+                for (j in i:nx)
+                    {
+                        ipbbt[1:kb[j,1], 1:kb[i,1], l] <-
+                            inprod(betaList[[intercept+j]]$bifd$tbasis,
+                                   betaList[[intercept+i]]$bifd$tbasis)
+                        l <- l+1
+                    }
+                iplbs[1:kb[i,2],1:kb[i,2],i] <-
+                    eval.penalty(betaList[[intercept+i]]$bifd$sbasis,
+                                 betaList[[intercept+i]]$Lfds)
+                iplbt[1:kb[i,1],1:kb[i,1],i] <-
+                    eval.penalty(betaList[[intercept+i]]$bifd$tbasis,
+                                 betaList[[intercept+i]]$Lfdt)
+                ipbs[1:kb[i,2],1:kb[i,2],i] <-
+                    inprod(betaList[[intercept+i]]$bifd$sbasis,
+                           betaList[[intercept+i]]$bifd$sbasis)
+                ipbt[1:kb[i,1],1:kb[i,1],i] <-
+                    inprod(betaList[[intercept+i]]$bifd$tbasis,
+                           betaList[[intercept+i]]$bifd$tbasis)
+                Bi <- inprod(xfdobjList[[i]]$basis,
+                             betaList[[intercept+i]]$bifd$sbasis)
+                H[,1:kb[i,2],i] <- crossprod(xfdobjList[[i]]$coefs, Bi)
+                bx[1:kx[i],,i] <- xfdobjList[[i]]$coefs
+                nR <- kb[i,1]*kb[i,2]
+                Rs[1:nR,1:nR,i] <- kronecker(iplbs[1:kb[i,2],1:kb[i,2],i],
+                                              ipbt[1:kb[i,1],1:kb[i,1],i])
+                Rt[1:nR,1:nR,i] <- kronecker(ipbs[1:kb[i,2],1:kb[i,2],i],
+                                             iplbt[1:kb[i,1],1:kb[i,1],i])
+                Bi <- inprod(yfdobj$basis,
+                             betaList[[intercept+i]]$bifd$tbasis)
+                G[,1:max(kb[,1]),i] <- crossprod(yfdobj$coefs, Bi)
+            }
+        ipyy <- inprod(yfdobj$basis, yfdobj$basis)
+        ipyy <- sapply(1:n, function(i) crossprod(yfdobj$coefs[,i],
+                                                  ipyy%*%yfdobj$coefs[,i]))
+        
+        list(ipya=ipya, Rt=Rt, Rs=Rs, R0=R0, H=H, G=G, ipaa=ipaa, ipabt=ipabt,
+             ipbbt=ipbbt, lam=lam, lam0=lam0, k0=k0, kb=kb, kx=kx, ky=ky,Fmat=Fmat,
+             bx=bx, by=by, n=n, nx=nx, ncoef=k0+sum(kb[,1]*kb[,2]),ipyy=ipyy,
+             xfdobjList=xfdobjList, yfdobj=yfdobj, betaList=betaList)
+    }
 
 ### The main estimation function for multivariate functional
 ### regression with functional response and
 ###  two dimensional functional parameters
 ##############################################################
 
-.funcregFit <- function (xfdobjList, yfdobj, betaList, data=NULL,
-                         vcov = c("iid", "noniid"), wtvec = NULL,
-                         Intercept = TRUE, regularized = TRUE, sandwich=TRUE,
-                         getGCV=FALSE, multicore=0) 
+
+.funcregFit <- function (obj)
     {
-### data is a list with the matrix of observations named as follows:
-### t (T vector) for the index of time of the observed data, and
-### Y (TxN) for the matrix of observed response. It is used to compute the 
-### covariance matrix of the error term. If NULL, no covariane matrix can be computed
-
-	Nx <- length(xfdobjList)
-	vcov <- match.arg(vcov)
-
-	if ( !(Intercept %in% c(0,1)))
-            stop("Intercept is either TRUE of FALSE")
-
-### Collecting information about Y
-### Checking if it is of the right format
-#########################################
-	ybasis = yfdobj$basis
-	ynbasis = ybasis$nbasis
-	ranget = ybasis$rangeval
-	nfine = max(c(201, 10 * ynbasis + 1))
-	tfine = seq(ranget[1], ranget[2], len = nfine)
-	coefy = yfdobj$coef
-	coefdy = dim(coefy)
-	ncurves = coefdy[2]
-	if (!is.fd(yfdobj)) 
-            stop("YFD is not a functional data object.")
-
-### Collecting information about the X's
-### Checking if they are of the right format
-############################################
-	check <- sapply(1:Nx, function(i) !is.fd(xfdobjList[[i]]))
-	if (any(check)) 
-            stop("On or more XFD are not functional data objects.")
-	xbasis <- list()
-	ranges <- list()
-	coefx <- list()
-	coefdx <- list()
-	for (i in 1:Nx)
+        res <- .Fortran("funcregwv",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
+                        as.double(obj$Rt),as.double(obj$Rs),as.double(obj$ipaa),
+                        as.double(obj$ipabt),as.double(obj$ipbbt),
+                        as.double(obj$Fmat),as.integer(obj$n),
+                        as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
+                        as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
+                        as.integer(obj$ncoef), as.double(obj$lam0),
+                        as.double(obj$lam), coef=double(obj$ncoef), info=integer(1),
+                        cmat=double(obj$ncoef^2), dmat=double(obj$ncoef),
+                        cmat0=double(obj$ncoef^2))
+        coefvec <- res$coef
+        info <- res$info
+        Intercept <- obj$k0>0
+        # to modify to get more flexibility
+        tfine <- seq(obj$yfdobj$basis$rangeval[1],
+                     obj$yfdobj$basis$rangeval[2], length.out=300)
+        if (Intercept)
             {
-		xbasis[[i]] <- xfdobjList[[i]]$basis
-	        ranges[[i]] = xbasis[[i]]$rangeval
-		coefx[[i]] <- xfdobjList[[i]]$coef
-		coefdx[[i]] <- dim(coefx[[i]])
-            }
-	check <- sapply(1:Nx, function(i) coefdx[[i]][2] != ncurves)
-	if (any(check)) 
-            stop("Numbers of observations in one or more X's and Y do not match.")
-
-### Collecting information on the beta's
-### Checking that they have the right format
-#############################################
-
-	if (!inherits(betaList, "list")) 
-            stop("betaList is not a list object.")
-	if (length(betaList) != (Nx+Intercept)) 
-            stop("The number of beta's do not match the number of regressors.")
-	nalpha <- 0
-	if (Intercept)
-            {
-		alphafdPar = betaList[[1]]
-	        alphafd = alphafdPar$fd
-	        alphaLfd = alphafdPar$Lfd
-	        alphalambda = alphafdPar$lambda
-	        alphabasis = alphafd$basis
-	        alpharange = alphabasis$rangeval
-	        alphanbasis = alphabasis$nbasis
-	        if (!inherits(alphafdPar, "fdPar")) 
-                    stop("Alpha = BETACELL[[1]] is not a fdPar object.")
-	        if (alpharange[1] != ranget[1] || alpharange[2] != ranget[2]) 
-                    stop("Range of ALPHAFD coefficient and YFD not compatible.")
-		nalpha <- alphanbasis
-            }
-	betabifdPar <- list()
-	betasLfd <- list()
-	betatLfd <- list()
-	betaslambda = list()
-	betatlambda = list()
-	betabifd = list()
-	betasbasis = list()
-	betasrange = list()
-	betatbasis = list()
-	betatrange = list()
-	betasnbasis = list()
-	betatnbasis = list()
-	nbeta <- 0
-
-	for (i in 1:Nx)
-            {
-	        betabifdPar[[i]] = betaList[[Intercept+i]]
-	        if (!inherits(betabifdPar[[i]], "bifdPar")) 
-                    stop("One of the beta(s,t) is not a bifdPar object.")
-		betasLfd[[i]] = betabifdPar[[i]]$Lfds
-	        betatLfd[[i]] = betabifdPar[[i]]$Lfdt
-	        betaslambda[[i]] = betabifdPar[[i]]$lambdas
-	        betatlambda[[i]] = betabifdPar[[i]]$lambdat
-	        betabifd[[i]] = betabifdPar[[i]]$bifd
-	        betasbasis[[i]] = betabifd[[i]]$sbasis
-	        betasrange[[i]] = betasbasis[[i]]$rangeval
-	        betatbasis[[i]] = betabifd[[i]]$tbasis
-	        betatrange[[i]] = betatbasis[[i]]$rangeval
-	        betasnbasis[[i]] = betasbasis[[i]]$nbasis
-	        betatnbasis[[i]] = betatbasis[[i]]$nbasis
-	        if (betasrange[[i]][1] != ranges[[i]][1] || betasrange[[i]][2] != ranges[[i]][2]) 
-                    stop("Range of one of the BETASFD coefficient not compatible with its XFD.")
-	        if (betatrange[[i]][1] != ranget[1] || betatrange[[i]][2] != ranget[2]) 
-                    stop("Range of one of the BETATFD coefficient and YFD not compatible.")
-		nbeta <- nbeta+betasnbasis[[i]]*betatnbasis[[i]]
-            }
-### Starting to compute lists of matrices
-#########################################
-
-### The list of penalty matrices
-##############################
-	betassmat <- list()
-	betattmat <- list()
-	RList <- list()
-	if(Intercept)
-            {
-		if (alphalambda>0)
-                    RList[[1]] <- eval.penalty(alphabasis, alphaLfd)
-            }
-
-	for (i in 1:Nx)
-            {
-	        betassmat[[i]] = inprod(betasbasis[[i]], betasbasis[[i]])
-	        betattmat[[i]] = inprod(betatbasis[[i]], betatbasis[[i]])
-		RList[[i+Intercept]] <- list(s=0,t=0)
-		if(betaslambda[[i]]>0)
-                    RList[[i+Intercept]]$s <- eval.penalty(betasbasis[[i]], betasLfd[[i]])
-		if(betatlambda[[i]]>0)
-                    RList[[i+Intercept]]$t <- eval.penalty(betatbasis[[i]], betatLfd[[i]])
-            }
-
-### Constructing F, G and H inprod
-#####################################
-	if (Intercept)
-            {
-	        Finprod = inprod(ybasis, alphabasis)
-	        Fmat = crossprod(coefy, Finprod)
-            }
-
-	Ginprod <- list()
-	Hinprod <- list()
-	Gmat <- list()
-	Hmat <- list()
-	H1CP <- list()
-	HHCP = list()
-
-	for (i in 1:Nx)
-            {
-	        Ginprod[[i]] = inprod(ybasis, betatbasis[[i]])
-	        Hinprod[[i]] = inprod(xbasis[[i]], betasbasis[[i]])
-	        Gmat[[i]] = crossprod(coefy,Ginprod[[i]])
-	        Hmat[[i]] = crossprod(coefx[[i]], Hinprod[[i]])
-		H1CP[[i]] = as.matrix(colSums(Hmat[[i]]))	
-	        HHCP[[i]] = crossprod(Hmat[[i]])
-            }
-
-### Building the Cmat matrix and the Dmat
-##########################################
-
-	.Matfct <- function(Sigma=NULL, isPen=TRUE, both=FALSE)
-            {
-                Dmat <- vector()
-                if (Intercept)
-                    Dmat <- c(Dmat, colSums(Fmat))
-                for (i in 1: Nx)
-                    {
-                        HGCP = crossprod(Gmat[[i]], Hmat[[i]])
-                        Dmat <- c(Dmat, c(HGCP))
-                    }
-                Cmat <- matrix(0, ncoef, ncoef)
-                if (both)
-                    Cmat_noPen <- matrix(0, ncoef, ncoef)
-                if (Intercept)
-                    {
-                        if (is.null(Sigma)) {
-                            Cst <- ncurves
-                        } else {
-                            if (is.null(dim(Sigma)))
-				Cst <- ncurves*Sigma
-                            else
-				Cst <- sum(Sigma)
-                        }
-                        Cmat[1:alphanbasis, 1:alphanbasis] <- Cst *
-                            inprod(alphabasis, alphabasis)
-                        if (both)
-                            Cmat_noPen[1:alphanbasis, 1:alphanbasis] <-
-                                Cmat[1:alphanbasis, 1:alphanbasis]
-                        if (alphalambda > 0 & isPen)
-                            Cmat[1:alphanbasis, 1:alphanbasis] <-
-                                Cmat[1:alphanbasis, 1:alphanbasis] +
-				alphalambda*RList[[1]]
-                        start <- alphanbasis+1
-                        for (i in 1: Nx)
-                            {
-                                nb <- betatnbasis[[i]]*betasnbasis[[i]]
-                                betalttmat = inprod(betatbasis[[i]], alphabasis)
-                                if (!is.null(Sigma))
-                                    {
-                                        if (is.null(dim(Sigma)))
-                                            {
-                                                H1CP2 <- Sigma*H1CP[[i]]
-                                            } else {
-                                                H1CP2 <- crossprod(Hmat[[i]], colSums(Sigma))
-                                            }
-                                    } else {
-                                        H1CP2 <- H1CP[[i]]	
-                                    }
-
-                                Cmat[1:alphanbasis, start:(start+nb-1)] <-
-                                    t(kronecker(H1CP2, betalttmat))
-                                Cmat[start:(start+nb-1), 1:alphanbasis] <-
-                                    t(Cmat[1:alphanbasis, start:(start+nb-1)])
-                                if (both)
-                                    {
-                                        Cmat_noPen[1:alphanbasis, start:(start+nb-1)] <-
-                                            Cmat[1:alphanbasis, start:(start+nb-1)]
-                                        Cmat_noPen[start:(start+nb-1), 1:alphanbasis] <-
-                                            Cmat[start:(start+nb-1), 1:alphanbasis]
-                                    }
-                                start <- start+nb
-                            }
-                        colstart <- alphanbasis+1
-                        rowstart <- alphanbasis+1
-                    } else {
-                        colstart <- 1
-                        rowstart <- 1
-                    }
-
-                for (i in 1:Nx)
-                    {
-                        if (!is.null(Sigma))
-                            {
-				if (is.null(dim(Sigma)))
-                                    HHCP2 <- Sigma*HHCP[[i]]
-				else
-                                    HHCP2 <- crossprod(Hmat[[i]],Sigma%*%Hmat[[i]])
-                            } else {
-                                HHCP2 <- HHCP[[i]]	
-                            }
-                        tempMat = kronecker(HHCP2, betattmat[[i]])
-                        rowind <- rowstart:(rowstart+nrow(tempMat)-1)
-                        colind <- colstart:(colstart+ncol(tempMat)-1)
-                        rowstart <- rowstart+nrow(tempMat)
-                        colstart <- colstart+ncol(tempMat)
-                        if (both)
-                            Cmat_noPen[rowind,colind] <- tempMat
-                        if (betaslambda[[i]] > 0 & isPen) 
-                            tempMat = tempMat + betaslambda[[i]] *
-                                kronecker(RList[[Intercept+i]]$s, betattmat[[i]])
-                        if (betatlambda[[i]] > 0 & isPen) 
-                            tempMat = tempMat + betatlambda[[i]] *
-                                kronecker(betassmat[[i]], RList[[Intercept+i]]$t)
-                        Cmat[rowind,colind] <- tempMat
-                        if (i < Nx)
-                            {
-                                for (j in (i+1):(Nx))
-                                    {
-                                        if (!is.null(Sigma))
-                                            {
-                                                if (is.null(dim(Sigma)))
-                                                    HHCP2 <- Sigma*crossprod(Hmat[[j]],
-                                                                             Hmat[[i]])
-                                                else
-                                                    HHCP2 <- crossprod(Hmat[[j]],
-                                                                       Sigma%*%Hmat[[i]])
-                                            } else {
-						HHCP2 <- crossprod(Hmat[[j]],Hmat[[i]])
-                                            }
-                                        betaij <- inprod(betatbasis[[j]],betatbasis[[i]])
-                                        tempMat <- kronecker(HHCP2, betaij)
-                                        colind <- (max(colind)+1):(max(colind)+nrow(tempMat))
-                                        Cmat[rowind,colind] <- t(tempMat)
-                                        Cmat[colind,rowind] <- tempMat
-                                        if (both)
-                                            {
-                                                Cmat_noPen[rowind,colind] <- t(tempMat)
-                                                Cmat_noPen[colind,rowind] <- tempMat
-                                            }
-                                    }
-                                
-                            }
-
-                    }
-                if (both)
-                    {	
-                        return(list(Cmat=Cmat, Dmat=Dmat,Cmat_noPen=Cmat_noPen))
-                    } else {
-                        return(list(Cmat=Cmat, Dmat=Dmat))
-                    }
-            }
-	ncoef <- nalpha+nbeta
-	if (getGCV) {
-            AllMat <- .Matfct(both=TRUE)
-            Cmat_noPen <- AllMat$Cmat_noPen
-	} else {
-            AllMat <- .Matfct()}
-	Cmat <- AllMat$Cmat
-	Dmat <- AllMat$Dma
-
-### Solving the system
-### and building the coef matrices
-### If eigen values are too small, we regularized the solution	
-	if (regularized == TRUE)
-            {
-                eigCmat <- eigen(Cmat)$val 
-                if (min(eigCmat)<1e-6)
-                    Cmat <- Cmat + diag(ncol(Cmat))*(0.1*min(eigCmat[eigCmat>1e-5]))
-            }
-	if(is.numeric(regularized))
-            {
- 		Cmat <- Cmat + diag(ncol(Cmat))*regularized
-            }	
-	
-	coefvec = symsolve(Cmat, Dmat)
-
-	if (Intercept)
-            {
-	    	alphacoef = coefvec[1:alphanbasis]
-	    	alphafdnames = yfdobj$fdnames
+	    	alphacoef = coefvec[1:obj$k0]
+	    	alphafdnames = obj$yfdobj$fdnames
 	    	alphafdnames[[3]] = "Intercept"
-	    	alphafd = fd(alphacoef, alphabasis, alphafdnames)
-		start <- alphanbasis+1
-	        yhatmat = eval.fd(tfine, alphafd) %*% matrix(1, 1, ncurves) 
+	    	alphafd = fd(alphacoef, obj$betaList[[1]]$fd$basis, alphafdnames)
+		start <- obj$k0+1
+	        yhatmat = eval.fd(tfine, alphafd) %*% matrix(1, 1, obj$n) 
             } else {
 		start <- 1
             }
@@ -436,122 +235,107 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
 	betafd <- list()
 	xbetacoef <- list()
 	xbetafd <- list()
-	for (i in 1:Nx)
+	for (i in 1:obj$nx)
             {
-		nb <- betatnbasis[[i]]*betasnbasis[[i]]
+		nb <- prod(obj$kb[i,])
 		ind <- start:(start+nb-1)
 		start <- start+nb	
-		betacoef[[i]] <- matrix(coefvec[ind], betatnbasis[[i]], betasnbasis[[i]])
-		betafdnames = xfdobjList[[i]]$fdnames
+		betacoef[[i]] <- matrix(coefvec[ind], obj$kb[i,1], obj$kb[i,2])
+		betafdnames = obj$xfdobjList[[i]]$fdnames
 	        betafdnames[[3]] = paste("Reg. Coefficient_", i, sep="")
-	        betafd[[i]] = bifd(t(betacoef[[i]]), betasbasis[[i]],
-                          betatbasis[[i]], betafdnames)
-	        xbetacoef[[i]] = betacoef[[i]] %*% t(Hmat[[i]])
-	        xbetafd[[i]] = fd(xbetacoef[[i]], betatbasis[[i]])
+	        betafd[[i]] = bifd(t(betacoef[[i]]),
+                          obj$betaList[[i+Intercept]]$bifd$sbasis,
+                          obj$betaList[[i+Intercept]]$bifd$tbasis, betafdnames)
+                H = obj$H[,1:obj$kb[i,2],i]
+	        xbetacoef[[i]] = betacoef[[i]] %*% t(H)
+	        xbetafd[[i]] = fd(xbetacoef[[i]], obj$betaList[[Intercept+i]]$bifd$tbasis)
 		if ((i==1) & !Intercept)	
                     yhatmat <- eval.fd(tfine, xbetafd[[i]])
 		else  
                     yhatmat <- yhatmat + eval.fd(tfine, xbetafd[[i]])  
             }
-	yhatfd = smooth.basis(tfine, yhatmat, ybasis)$fd
-        yhatfd$fdnames <- yfdobj$fdnames
+	yhatfd = smooth.basis(tfine, yhatmat, obj$yfdobj$basis)$fd
+        yhatfd$fdnames <- obj$yfdobj$fdnames
         yhatfd$fdnames[[3]] <- "fitted"
 	linmodList = list(betaestbifdList = betafd, yhatfdobj = yhatfd,
-            xbetafd = xbetafd, Hj = Hinprod, Cmat = Cmat)
+            xbetafd = xbetafd, info=info)
 	if (Intercept)
             linmodList$beta0estfd <- alphafd
+        resid <- obj$yfdobj-yhatfd
+        resid$fdnames <- obj$yfdobj$fdnames
+        resid$fdnames[[3]] <- "residuals"
+        linmodList$residuals <- resid
 
-### Computing variances
-####################################
-	if (!is.null(data))
+        ## Compute the Variance
+        yhat <- eval.fd(obj$data$t, yhatfd)
+        e <- obj$data$Y-yhat
+        ## Need to think about a more general covariance matrix
+        ## The one computed is the sandwich matrix under homoscedasticity
+        Cmat <-  matrix(res$cmat, ncol=obj$ncoef)
+        meat <-  matrix(res$cmat0, ncol=obj$ncoef)
+        ### Only the lower triangular part is referenced in Fortran
+        Cmat[upper.tri(Cmat)] <- t(Cmat)[upper.tri(Cmat)]
+        meat[upper.tri(meat)] <- t(meat)[upper.tri(meat)]
+        sigma <-  var(c(e))
+        Vcoef <- solve(Cmat, meat)
+        Vcoef <- solve(Cmat, t(Vcoef))
+        Sig <- list()
+        if (Intercept)
             {
-		yhat <- eval.fd(data$t, yhatfd)
-		e <- data$Y-yhat
-		if (vcov != "iid")
-                    stop("non iid not yet implemented")
-                sigma <-  var(c(e))
-		if(sandwich)
-                    {
-			meat <- .Matfct(isPen=FALSE, Sigma=sigma)$Cmat
-		        Vcoef <- solve(Cmat, meat)
-		        Vcoef <- solve(Cmat, t(Vcoef))
-                    } else {
-			Vcoef <- sigma*solve(Cmat)	
-                    }
-	        Sig <- list()
-        	if (Intercept)
-                    {
-			Sig[[1]] <- Vcoef[1:alphanbasis,1:alphanbasis]
-			start <- alphanbasis+1
-                    } else {
-			start <- 1
-                    }	
-		for (i in 1:Nx)
-                    {
-			ind <- start:(start+betasnbasis[[i]]*betatnbasis[[i]]-1)	
-			Sig[[i+Intercept]] <- Vcoef[ind, ind]
-			start <- start+betasnbasis[[i]]*betatnbasis[[i]]
-                    }
-		linmodList$covPar <- Sig
-		linmodList$data <- data
-                resid <- yfdobj-yhatfd
-                resid$fdnames <- yfdobj$fdnames
-                resid$fdnames[[3]] <- "residuals"
-                linmodList$residuals <- resid
-            }
-
-### Computing the generalized cross-validation
-##############################################
-	if (getGCV)
+                Sig[[1]] <- Vcoef[1:obj$k0,1:obj$k0]
+                start <- obj$k0+1
+            } else {
+                start <- 1
+            }	
+        for (i in 1:obj$nx)
             {
-### warning("The computation of the GCV is experimental for now")
-		Integrate_n <- 30
-		e <- yfdobj-yhatfd
-		ssr <- sum(inprod(e^2))
-		P <- function(t)
-                    {
-			e <- c(eval.fd(t,yfdobj-yhatfd))
-			ssr <- sum(e^2)	
-			Wmat_t <- vector()
-			if (Intercept)
-                            Wmat_t <- rep(1,ncurves)%x%eval.basis(t,alphabasis)					
-			for (i in 1:Nx)
-                            {
-				phi_t <- eval.basis(t,betatbasis[[i]])
-				Wmat_t <- cbind(Wmat_t, phi_t%x%Hmat[[i]])
-                            }
-			Pmat <- Wmat_t%*%symsolve(Cmat, t(Wmat_t))
-			df <- sum(diag(Pmat))
-			GCV <- ncurves*ssr/(ncurves-df)^2
-                    }
-		Simpson <- function(f, a, b, n, ...) 
-                    {
-			n <- floor(n/2) * 2 + 1
-			x <- seq(a, b, len = n)
-			z <- rep(c(4, 2), (n - 3)/2)
-			z <- c(1, z, 4, 1)
-			h <- x[2] - x[1]
-			sum(z * f(x, ...) * h/3)
-                    }
-		Pf <- function(t)
-                    {
-                        res <- lapply(t,P)
-			simplify2array(res)
-                    }
-### Have to think about it...                 
-### GCV <- Simpson(Pf, yfdobj$basis$rangeval[1],yfdobj$basis$rangeval[2], Integrate_n)
-### df <- Simpson(Pf, yfdobj$basis$rangeval[1],yfdobj$basis$rangeval[2], Integrate_n)
-                
-		df <- sum(diag(symsolve(Cmat, Cmat_noPen)))
-		n <- ncurves
-		GCV <- n*ssr/(n-df)^2
-		attr(GCV,"n") <- n
-		attr(GCV,"df") <- df
-		attr(GCV,"ssr") <- ssr
-		linmodList$GCV <- GCV
+                ind <- start:(start+prod(obj$kb[i,])-1)	
+                Sig[[i+Intercept]] <- Vcoef[ind, ind]
+                start <- start+prod(obj$kb[i,])
             }
-	return(linmodList)
+        linmodList$covPar <- Sig
+        linmodList$data <- obj$data
+        return(linmodList)
     }
+
+.funcregCV <- function (obj)
+    {
+        res <- .Fortran("funcregcv",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
+                        as.double(obj$Rt),as.double(obj$Rs),as.double(obj$ipaa),
+                        as.double(obj$ipabt),as.double(obj$ipbbt),
+                        as.double(obj$Fmat),as.integer(obj$n),
+                        as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
+                        as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
+                        as.integer(obj$ncoef), as.double(obj$lam0),
+                        as.double(obj$lam), as.double(obj$ipyy),
+                        cv=double(1), info=integer(obj$n))
+        list(CV = res$cv, cvInfo = res$info)
+    }
+
+
+funcregCV <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
+                      k, CstInt=FALSE, obj=NULL, ...)
+    {
+        if (!is.null(obj))
+            {
+                if (class(obj) != "funcreg")
+                    stop("obj must be of class funcreg")
+                if (!is.null(obj$res$CV))
+                    res <- obj$res[c("CV","cvInfo")]
+                else
+                    res <- .funcregCV(obj$obj)
+            } else {
+                obj <- funcreg(form=form, create_basis=create_basis, LD=LD,
+                               lambda=lambda, k=k, CstInt=CstInt, CV=TRUE, ...)
+                res <- obj$res[c("CV","cvInfo")]
+            }
+        ans <- res$CV
+        attr(ans, "convergence") <- res$cvInfo
+        ans
+    }
+
+
+
 
 
 vcov.funcreg <- function(object, which, type = c("beta", "beta_t", "beta_s", "beta_st"),
@@ -961,3 +745,12 @@ fitted.funcreg <- function(object, ...)
 
 residuals.funcreg <- function(object, ...)
     object$res$residuals
+
+
+as.fd.myfda <- function(x, fdnames=NULL, npoints=200, ...)
+    {
+        if (strtrim(x$type,3) == "Non")
+            x <- makeLinFda(x, npoints=npoints)
+        xfd <- fd(x$coef, x$basis, fdnames=fdnames)
+        xfd
+    }

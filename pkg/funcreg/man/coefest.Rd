@@ -3,6 +3,7 @@
 \alias{nlCoefEst}
 \alias{makeLinFda}
 \alias{logFda}
+\alias{as.fd.myfda}
 
 \title{Functional Data Fit}
 
@@ -21,6 +22,8 @@ nlCoefEst(y, t, lam, k, L=2, rangeval = c(0,1),
 makeLinFda(obj, npoints=200)
 
 logFda(obj)
+
+\method{as.fd}{myfda}(x, fdnames=NULL, npoints=200, ...)
 }
 \arguments{
 \item{y}{A \eqn{T \times n} matrix of data points, when \eqn{T} is the number
@@ -51,11 +54,17 @@ logFda(obj)
   method}
 
 \item{...}{Other argument that is passed to \code{create_basis}  (see
-  \code{\link{create.bspline.basis}})}
+  \code{\link{create.bspline.basis}}), or to other methods in the case
+  of \code{as.fd.myfda}.}
 
 \item{obj}{Object of class "myfda"}
 
-\item{npoints}{Number of points to fit the linear FDA to the non-linear one}
+\item{npoints}{Number of points to fit the linear FDA to the non-linear
+  one}
+
+\item{x}{Object of class "myfda"}
+
+\item{fdnames}{Names of elements of the "fd" object (see \code{\link{fd}})}
 }
 
 \details{
@@ -116,8 +125,11 @@ res
 resLin <- makeLinFda(res)
 resLin
 
+## Take the logarithm of the non-linear functional data
 logres <- logFda(res)
 plot(res,1:2)
 
+## Transform the myfda object into an fd object
+resfd <- as.fd(resLin)
 }
 
