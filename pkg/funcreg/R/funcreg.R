@@ -68,8 +68,8 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             {
                 b <- create_basis(rangeval, k[i+nk0], ...)
                 bb <- bifd(matrix(0, k[i+nk0], k[i+nk0]), b, b)
-                betaList[[i+Intercept]] <- bifdPar(bb, LD, LD, lambda[start],
-                                                   lambda[start+1])
+                betaList[[i+Intercept]] <- bifdPar(bb, LD, LD, lambda[start+1],
+                                                   lambda[start])
 		start <- start + 2		
             }
 	chk <- TRUE
@@ -314,7 +314,6 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
 
 .dfuncregCV <- function (obj)
     {
-        h <- obj$h
         res <- .Fortran("dfuncregcv",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
                         as.double(obj$Rt),as.double(obj$Rs),as.double(obj$ipaa),
                         as.double(obj$ipabt),as.double(obj$ipbbt),
@@ -323,7 +322,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                         as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
                         as.integer(obj$ncoef), as.double(obj$lam0),
                         as.double(obj$lam), as.double(obj$ipyy),
-                        as.double(h), dcv=double(1+2*obj$nx))
+                        dcv=double(1+2*obj$nx))
         res$dcv
     }
 
@@ -774,7 +773,7 @@ as.fd.myfda <- function(x, fdnames=NULL, npoints=200, ...)
 
 
 getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
-                          k, CstInt=FALSE, ..., h = 1e-04, loglam=FALSE,
+                          k, CstInt=FALSE, ..., loglam=FALSE,
                           method="BFGS", optimArg=list())
     {
         if(loglam)
@@ -783,7 +782,6 @@ getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
             lamtmp <- lam0
         obj <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lamtmp,
                            k=k, CstInt=CstInt, ...)$obj
-        obj$h <- h
         obj$loglam <- loglam
         f <- function(lam, obj)
             {

@@ -14,7 +14,7 @@ funcregCV(form, create_basis=create.bspline.basis, LD=2, lambda,
                       k, CstInt=FALSE, obj=NULL, ...)
 
 getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
-                          k, CstInt=FALSE, ..., h = 1e-04, loglam=FALSE,
+                          k, CstInt=FALSE, ..., loglam=FALSE,
                           method="BFGS", optimArg=list())
 }
 
@@ -51,8 +51,6 @@ getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
  \item{CstInt}{If \code{TRUE}, the intercept is assumed constant. If
    \code{FALSE}, it is a one dimensional functional parameter.}
 
- \item{h}{The parameter for the two-side numerical derivatives}
- 
  \item{loglam}{If \code{TRUE}, lam0 is \code{log10(lambda)} and the
    function minimizes \code{CV(10^lam)}. It prevents the lambda's from
    being negative.}
