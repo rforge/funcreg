@@ -309,3 +309,42 @@ C     And provide the information to compute the variance
       cv = sum(cvv)
       end
 
+
+      subroutine dfuncregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     ipyy, hder, dcv)
+      integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, info(n), i, j, t
+      double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
+      double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), ipyy(n)
+      double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
+      double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
+      double precision g(n, mkbt, nx), dcv(1+2*nx), hder
+      double precision lam0, lam(nx, 2), lamt(nx,2), cvp, cvm
+      
+      lamt(1,1) = lam0+hder      
+      call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam,
+     *     ipyy, cvp, info)
+      lamt(1,1) = lam0-hder      
+      call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam,
+     *     ipyy, cvm, info)
+      dcv(1) = (cvp-cvm)/(2*hder)
+      t = 2
+      do j=1,2
+         do i=1,nx
+            lamt = lam
+            lamt(i,j) = lam(i,j)+hder
+            call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *           n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lamt,
+     *           ipyy, cvp, info)            
+            lamt(i,j) = lam(i,j)-hder
+            call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *           n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lamt,
+     *           ipyy, cvm, info)
+            dcv(t) = (cvp-cvm)/(2*hder)
+            t = t+1
+         end do
+      end do
+      end
+

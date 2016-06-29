@@ -312,6 +312,21 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         list(CV = res$cv, cvInfo = res$info)
     }
 
+.dfuncregCV <- function (obj)
+    {
+        h <- obj$h
+        res <- .Fortran("dfuncregcv",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
+                        as.double(obj$Rt),as.double(obj$Rs),as.double(obj$ipaa),
+                        as.double(obj$ipabt),as.double(obj$ipbbt),
+                        as.double(obj$Fmat),as.integer(obj$n),
+                        as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
+                        as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
+                        as.integer(obj$ncoef), as.double(obj$lam0),
+                        as.double(obj$lam), as.double(obj$ipyy),
+                        as.double(h), dcv=double(1+2*obj$nx))
+        res$dcv
+    }
+
 
 funcregCV <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                       k, CstInt=FALSE, obj=NULL, ...)
@@ -737,6 +752,8 @@ print.funcreg <- function(x, ...)
         cat("Mean of the functional parameters:\n")
         m <- summary(x)[,1,drop=FALSE]
         print.default(t(m))
+        if (!is.null(x$res$CV))
+            cat("Cross-Validation: ", format(x$res$CV, nsmall=5), "\n", sep="")
         invisible(x)
     }
 
@@ -753,4 +770,64 @@ as.fd.myfda <- function(x, fdnames=NULL, npoints=200, ...)
             x <- makeLinFda(x, npoints=npoints)
         xfd <- fd(x$coef, x$basis, fdnames=fdnames)
         xfd
+    }
+
+
+getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
+                          k, CstInt=FALSE, ..., h = 1e-04, loglam=FALSE,
+                          method="BFGS", optimArg=list())
+    {
+        if(loglam)
+            lamtmp <- 10^lam0
+        else
+            lamtmp <- lam0
+        obj <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lamtmp,
+                           k=k, CstInt=CstInt, ...)$obj
+        obj$h <- h
+        obj$loglam <- loglam
+        f <- function(lam, obj)
+            {
+                if (obj$loglam)
+                    lam <- 10^lam
+                if (obj$k0>0)
+                    {
+                        obj$lam0 <- lam[1]
+                        obj$lam = matrix(lam[-1], ncol=2)
+                    } else {
+                        obj$lam0 <- 0
+                        obj$lam <- matrix(lam,ncol=2)
+                    }
+                cv <- .funcregCV(obj)$CV
+                cv
+            }
+        df <- function(lam, obj)
+            {
+                if (obj$loglam)
+                    lam <- 10^lam
+                if (obj$k0>0)
+                    {
+                        obj$lam0 <- lam[1]
+                        obj$lam = matrix(lam[-1], ncol=2)
+                    } else {
+                        obj$lam0 <- 0
+                        obj$lam <- matrix(lam,ncol=2)
+                    }
+                dcv <- .dfuncregCV(obj)
+                if (obj$k0 == 0)
+                    dcv <- dcv[-1]
+                if (obj$loglam)
+                    dcv <- dcv*lam*log(10)
+                dcv
+            }
+        optimArg <- c(optimArg, list(method=method, par=lam0, fn=f, gr=df,
+                                     obj=obj))
+        res <- do.call(optim, optimArg)
+        if (loglam)
+            lambda <- 10^res$par
+        else
+            lambda <- res$par
+        res2 <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lambda,
+                        k=k, CstInt=CstInt, CV=TRUE, ...)
+        res2$optimRes <- res
+        res2
     }

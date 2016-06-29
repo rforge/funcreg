@@ -1,15 +1,21 @@
 \name{crossval}
 \alias{funcregCV}
-	
+\alias{getFuncregLam}
+
 \title{Leave-one-out cross-validation}
 
 \description{
-  It computes the cross-validation for a given lambda and k (see below).
+  It computes the cross-validation for a given lambda and k or find the
+  optimal lambda for a given k (see below).
   }
 
 \usage{
 funcregCV(form, create_basis=create.bspline.basis, LD=2, lambda,
                       k, CstInt=FALSE, obj=NULL, ...)
+
+getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
+                          k, CstInt=FALSE, ..., h = 1e-04, loglam=FALSE,
+                          method="BFGS", optimArg=list())
 }
 
 \arguments{
@@ -34,6 +40,8 @@ funcregCV(form, create_basis=create.bspline.basis, LD=2, lambda,
    on. If it is a scalar, it is assumed that the smoothing parameter is
    the same for all functional parameters.}
 
+ \item{lam0}{Initial value of lambda for the minimization of the cross-validation}
+ 
  \item{k}{A vector of integers representing the number of basis for each
    functional parameter. The first is for the intercept (if there is an
    intercept and that \code{Cstint=FALSE}), the second for the first
@@ -43,15 +51,29 @@ funcregCV(form, create_basis=create.bspline.basis, LD=2, lambda,
  \item{CstInt}{If \code{TRUE}, the intercept is assumed constant. If
    \code{FALSE}, it is a one dimensional functional parameter.}
 
+ \item{h}{The parameter for the two-side numerical derivatives}
+ 
+ \item{loglam}{If \code{TRUE}, lam0 is \code{log10(lambda)} and the
+   function minimizes \code{CV(10^lam)}. It prevents the lambda's from
+   being negative.}
+
+ \item{method}{The algorithm used by \code{link{optim}}}
+
+ \item{optimArg}{A list of additional arguments to pass to \code{link{optim}}}
+ 
  \item{...}{Additional arguments to be passed to \code{create_basis}
    (see \code{\link{create.bspline.basis}}).}
 
 }
 
 \value{
-It returns the value of the leave-one-out cross-validation. The
+'funregCV' returns the value of the leave-one-out cross-validation. The
 attributes 'convergence', returns convergence code for each
-estimation. 
+estimation.
+
+'getFuncregLam' returns the fitted object of class 'funcreg' using the
+optimal lambda. The argument 'optimRes' gives the \code{\link{optim}}
+output from the minimization of the cross-validation. 
 }
 \references{
    Ramsay, James O., & Silverman, Bernard W. (2005), 
@@ -80,6 +102,18 @@ funcregCV(obj=res)
 ## without object
 funcregCV(yfd~xfd, k=c(5,5), lambda=c(.001,.001,.001))
 
+## With the default values
+getFuncregLam(yfd~xfd, k=c(5,5), lam0=c(.001,.001,.001))
 
+## With upper and lower bound
+getFuncregLam(yfd~xfd, k=c(5,5), lam0=c(.001,.001,.001), method="L-BFGS-B",
+             optimArg=list(lower=c(0,0,0),upper=c(200,200,200))) 
+
+## With loglam
+res <- getFuncregLam(yfd~xfd, k=c(5,5), lam0=c(-3,-3,-3), loglam=TRUE)
+res
+
+## Get info about the optim()
+res$optimRes
 }
 
