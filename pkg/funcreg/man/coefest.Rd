@@ -17,7 +17,8 @@ coefEst(y, t, lam, k, L=2, rangeval = c(0,1),
         create_basis=create.bspline.basis, ...)
 
 nlCoefEst(y, t, lam, k, L=2, rangeval = c(0,1),
-          create_basis=create.bspline.basis, maxit=100, tol=1e-8, ...)
+          create_basis=create.bspline.basis, maxit=100, tol=1e-8,
+          typels=c("brent","grid"), ...)
 
 makeLinFda(obj, npoints=200)
 
@@ -64,7 +65,11 @@ logFda(obj)
 
 \item{x}{Object of class "myfda"}
 
-\item{fdnames}{Names of elements of the "fd" object (see \code{\link{fd}})}
+\item{fdnames}{Names of elements of the "fd" object (see
+  \code{\link{fd}})}
+
+\item{typels}{The \code{nlCoefEst} is based on Newton with line
+  search. The argument refers to the method used for the line search}
 }
 
 \details{

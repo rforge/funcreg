@@ -14,9 +14,12 @@
 #### Function to get the coefficients
 #### Y is a matrix
 nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
-                      create_basis=create.bspline.basis, maxit=100, tol=1e-8, ...)
+                      create_basis=create.bspline.basis, maxit=100, tol=1e-8,
+                      typels=c("brent","grid"),  ...)
     {
-        type = "Non-Linear FDA: Exp() fit"
+        type <- "Non-Linear FDA: Exp() fit"
+        typels <- match.arg(typels)
+        typels2 <- strtrim(typels, 1)
         y <- as.matrix(y)
         n <- ncol(y)
         T <- nrow(y)    
@@ -30,10 +33,10 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
         res <- .Fortran("nlcoefest", as.double(y), as.double(basisval), as.integer(n),
                         as.integer(k), as.integer(T), as.double(lam), as.double(pen),
                         as.double(tol), as.integer(maxit), info = integer(n),
-                        coef = double(k*n), PACKAGE="funcreg")
+                        coef = double(k*n), as.character(typels2), PACKAGE="funcreg")
         ans <- list(coefficients=matrix(res$coef, k, n), convergence=res$info,
                     t=t, y=y, basis=basis, link=function(x) exp(x),
-                    lambda=lam, L=L, type=type, maxi=maxit, tol=tol)
+                    lambda=lam, L=L, type=type, maxi=maxit, tol=tol, typels=typels)
         class(ans) <- c("myfda")
         ans
     }
@@ -61,7 +64,7 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
 ####################################################
 nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                     create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-                    obj=NULL, ...)
+                    obj=NULL, typels=c("brent","grid"), ...)
     {
         if (!is.null(obj))
             {
@@ -70,10 +73,14 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                 y <- obj$y; t <- obj$t; kvec <- obj$basis$nbasis; n <- ncol(y)
                 L <- obj$L; maxit <- obj$maxit; tol <- obj$tol
                 T <- nrow(y); nlam <- 1; lamvec <- obj$lambda
+                typels <- obj$typels
+                typels2 <- strtrim(typels, 1)
                 nk <- 1; maxk=kvec
                 obj <- list(pen=eval.penalty(obj$basis, L),
                             basisval <- eval.basis(t, obj$basis))
-            } else {        
+            } else {
+                typels <- match.arg(typels)
+                typels2 <- strtrim(typels, 1)
                 obj <- .getPenArray(kvec, t, L, create_basis, rangeval, ...)
                 maxk <- max(kvec)
                 nk <- length(kvec)
@@ -86,7 +93,7 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                         as.integer(nlam), as.integer(nk),as.integer(maxk),
                         as.double(lamvec),  as.double(obj$pen), as.double(tol),
                         as.integer(maxit), info = integer(T*n*nlam*nk),
-                        cv = double(nlam*nk), PACKAGE="funcreg")
+                        cv = double(nlam*nk), as.character(typels2), PACKAGE="funcreg")
         convergence <- array(res$info, c(T, n, nlam, nk))
         dimnames(convergence) <- list(paste("t",1:T,sep=""),
                                       paste("Y",1:n, sep=""),
@@ -105,11 +112,12 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
 ### it returns an object of class myfda
 #########################################################################
 nlGetLandK <- function(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
-                       create_basis=create.bspline.basis, maxit=100, tol=1e-8, ...)
+                       create_basis=create.bspline.basis, maxit=100, tol=1e-8,
+                       typels=c("brent","grid"), ...)
     {
         cv <- nlFdaCV(y=y, t=t, lamvec=lamvec, kvec=kvec, L=L,
                        rangeval=rangeval, create_basis=create_basis,
-                       maxit=maxit, tol=tol, ...)
+                       maxit=maxit, tol=tol, typels=typels, ...)
         chk <- cv$convergence
         if (any(chk))
             mess = "Some estimations failed to converge"
@@ -122,7 +130,8 @@ nlGetLandK <- function(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
         lambda <- lamvec[w[1]]
         k=kvec[w[2]]
         res <- nlCoefEst(y=y, t=t, lam=lambda, k=k, L=L, rangeval = rangeval,
-                         create_basis=create_basis, maxit=maxit, tol=tol, ...)
+                         create_basis=create_basis, maxit=maxit, tol=tol,
+                         typels=typels, ...)
         res$cv <- min(cv$cv,na.rm=TRUE)
         res$grid <- list(lamgrid=lamvec, kgrid=kvec, cv=cv$cv, mess=mess)
         res
@@ -145,11 +154,15 @@ nlGetLandK <- function(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
 ## cross-validation. 
  #################################################
 nlGetLam <- function(y, t, lamInt, k, L=2, rangeval = c(0,1),
-                   create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-                   maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"), ...)
+                     create_basis=create.bspline.basis, maxit=100, tol=1e-8,
+                     maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"),
+                     typels=c("brent","grid"), ...)
     {
         type <- match.arg(type)
         type <- ifelse(type=="Brent", "nllambrent", "nllamgs")
+        typels <- match.arg(typels)
+        typels2 <- strtrim(typels, 1)
+
         obj <- .getPenArray(k, t, L, create_basis, rangeval, ...)
         maxk <- k
         nk <- 1
@@ -160,7 +173,8 @@ nlGetLam <- function(y, t, lamInt, k, L=2, rangeval = c(0,1),
                         as.double(lamInt[1]), as.double(lamInt[2]), as.double(obj$pen),
                         as.double(tol), as.integer(maxit), as.integer(maxitalgo),
                         as.double(tolalgo), info = integer(1), iter = integer(1),
-                        lam = double(1), cv=double(1), PACKAGE="funcreg")
+                        lam = double(1), cv=double(1), as.character(typels2),
+                        PACKAGE="funcreg")
         c(lam=res$lam, info=res$info, iter=res$iter, cv=res$cv)                        
     }
 
@@ -174,9 +188,11 @@ nlGetLam <- function(y, t, lamInt, k, L=2, rangeval = c(0,1),
 #########################################################################
 nlGetLandKopt <- function(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
                           create_basis=create.bspline.basis, maxit=100, tol=1e-7,
-                          maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"), ...)
+                          maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"),
+                          typels=c("brent","grid"), ...)
     {
         type <- match.arg(type)
+        typels <- match.arg(typels)
         res <- sapply(kvec, function(k) nlGetLam(y=y, t=t, lamInt=lamInt, k=k, L=L,
                                                  rangeval=rangeval,
                                                  create_basis=create_basis,
@@ -187,7 +203,8 @@ nlGetLandKopt <- function(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
         lambda <- res[1,w]
         k=kvec[w]
         obj <- nlCoefEst(y=y, t=t, lam=lambda, k=k, L=L, rangeval = rangeval,
-                         create_basis=create_basis, maxit=maxit, tol=tol, ...)
+                         create_basis=create_basis, maxit=maxit, tol=tol,
+                         typels=typels, ...)
         obj$cv <- res[4,w]
         obj$algo <- list(lamInter=lamInt, convergence=res[2,], numIter=res[3,])
         obj

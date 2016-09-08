@@ -9,7 +9,7 @@
 \usage{ 
 nlFdaCV(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
         create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-         obj=NULL, ...)
+         obj=NULL, typels=c("brent","grid"), ...)
 
 fdaCV(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
       create_basis=create.bspline.basis, obj=NULL, ...)
@@ -45,6 +45,9 @@ differential operator (see \code{\link{eval.penalty}}).}
   method}
 
 \item{obj}{Object of class "myfda" if we want the cross-validation of an already fitted model}
+
+\item{typels}{The \code{nlCoefEst} is based on Newton with line
+  search. The argument refers to the method used for the line search}
 
 \item{...}{Other argument that is passed to \code{create_basis} (see \code{\link{create.bspline.basis}}).}
 }

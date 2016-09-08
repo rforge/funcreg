@@ -15,14 +15,17 @@
 \usage{
 nlGetLam(y, t, lamInt, k, L=2, rangeval = c(0,1),
          create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-         maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"), ...)
+         maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"),
+         typels=c("brent","grid"), ...)
 
 nlGetLandKopt(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
               create_basis=create.bspline.basis, maxit=100, tol=1e-7,
-              maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"), ...)
+              maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"),
+              typels=c("brent","grid"), ...)
 
 nlGetLandK(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
-           create_basis=create.bspline.basis, maxit=100, tol=1e-8, ...)
+           create_basis=create.bspline.basis, maxit=100, tol=1e-8,
+           typels=c("brent","grid"), ...)
 
 getLam(y, t, lamInt, k, L=2, rangeval = c(0,1),
        create_basis=create.bspline.basis, 
@@ -77,6 +80,9 @@ differential operator (see \code{\link{eval.penalty}}).}
   Golden-Section method.}
 
 \item{type}{Which algorithm should we use to get the lambda.}
+
+\item{typels}{The \code{nlCoefEst} is based on Newton with line
+  search. The argument refers to the method used for the line search}
 
 \item{...}{Other argument that is passed to \code{create_basis}}  (see
 \code{\link{create.bspline.basis}}).}
