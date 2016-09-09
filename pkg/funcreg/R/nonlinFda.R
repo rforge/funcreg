@@ -20,6 +20,7 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
         type <- "Non-Linear FDA: Exp() fit"
         typels <- match.arg(typels)
         typels2 <- strtrim(typels, 1)
+        tolEigen <- 1e-8
         y <- as.matrix(y)
         n <- ncol(y)
         T <- nrow(y)    
@@ -30,8 +31,14 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
         basis <- create_basis(rangeval,k, ...)
         basisval <- eval.basis(t,basis)
         pen <- eval.penalty(basis,L)
+        res0 <- eigen(pen, TRUE)
+        chk <- which(abs(res0$val)>tolEigen)
+        pene <- res0$vec[,chk]
+        pene <- rbind(res0$val[chk], pene)
+        ka <- ncol(pene)
         res <- .Fortran("nlcoefest", as.double(y), as.double(basisval), as.integer(n),
-                        as.integer(k), as.integer(T), as.double(lam), as.double(pen),
+                        as.integer(k), as.integer(ka), as.integer(T), as.double(lam),
+                        as.double(pen), as.double(pene),
                         as.double(tol), as.integer(maxit), info = integer(n),
                         coef = double(k*n), as.character(typels2), PACKAGE="funcreg")
         ans <- list(coefficients=matrix(res$coef, k, n), convergence=res$info,
@@ -47,16 +54,25 @@ nlCoefEst <- function(y, t, lam, k, L=2, rangeval = c(0,1),
 .getPenArray <- function(kvec, t, L, create_basis, rangeval, ...)
     {
         pen <- array(0,dim=c(max(kvec),max(kvec), length(kvec)))
+        pene <- array(0,dim=c(max(kvec)+1,max(kvec), length(kvec)))
+        ka <- rep(0,length(kvec))
+        tolEigen <- 1e-8
         basisval <- array(0,dim=c(length(t), max(kvec), length(kvec)))
         for (i in 1:length(kvec))
             {
                 b <- create_basis(rangeval,kvec[i], ...)
                 tmp <- eval.penalty(b, L)
                 tmp2 <- eval.basis(t, b)
+                res0 <- eigen(tmp, TRUE)
+                chk <- which(abs(res0$val)>tolEigen)
+                tmp3 <- res0$vec[,chk]
+                tmp3 <- rbind(res0$val[chk], tmp3)
+                ka[i] <- ncol(tmp3)
+                pene[1:(kvec[i]+1), 1:ka[i], i] <- tmp3
                 pen[1:kvec[i], 1:kvec[i], i] <- tmp
                 basisval[,1:kvec[i], i] <- tmp2
             }
-        list(pen=pen, basisval=basisval)
+        list(pen=pen, ka=ka, pene=pene, basisval=basisval)
     }
 
 #### Main function to get the CV matrix (nlam x nK)
@@ -66,6 +82,7 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                     create_basis=create.bspline.basis, maxit=100, tol=1e-8,
                     obj=NULL, typels=c("brent","grid"), ...)
     {
+        tolEigen <- 1e-8
         if (!is.null(obj))
             {
                 if (class(obj) != "myfda")
@@ -76,7 +93,13 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                 typels <- obj$typels
                 typels2 <- strtrim(typels, 1)
                 nk <- 1; maxk=kvec
-                obj <- list(pen=eval.penalty(obj$basis, L),
+                pen <- eval.penalty(obj$basis, L)
+                res0 <- eigen(pen, TRUE)
+                chk <- which(abs(res0$val)>tolEigen)
+                pene <- res0$vec[,chk]
+                pene <- rbind(res0$val[chk], pene)
+                ka <- ncol(pene)
+                obj <- list(pen=pen, ka=ka, pene=pene,
                             basisval <- eval.basis(t, obj$basis))
             } else {
                 typels <- match.arg(typels)
@@ -89,9 +112,10 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
                 n <- ncol(y)
             }
         res <- .Fortran("nlcrval", as.double(y), as.double(obj$basisval),
-                        as.integer(n), as.integer(kvec), as.integer(T),
-                        as.integer(nlam), as.integer(nk),as.integer(maxk),
-                        as.double(lamvec),  as.double(obj$pen), as.double(tol),
+                        as.integer(n), as.integer(kvec), as.integer(obj$ka),
+                        as.integer(T), as.integer(nlam), as.integer(nk),
+                        as.integer(maxk), as.double(lamvec),  as.double(obj$pen),
+                        as.double(obj$pene), as.double(tol),
                         as.integer(maxit), info = integer(T*n*nlam*nk),
                         cv = double(nlam*nk), as.character(typels2), PACKAGE="funcreg")
         convergence <- array(res$info, c(T, n, nlam, nk))
@@ -169,8 +193,9 @@ nlGetLam <- function(y, t, lamInt, k, L=2, rangeval = c(0,1),
         T <- nrow(y)
         n <- ncol(y)
         res <- .Fortran(type, as.double(y), as.double(obj$basisval),
-                        as.integer(n), as.integer(k), as.integer(T),
-                        as.double(lamInt[1]), as.double(lamInt[2]), as.double(obj$pen),
+                        as.integer(n), as.integer(k), as.integer(obj$ka), as.integer(T),
+                        as.double(lamInt[1]), as.double(lamInt[2]),
+                        as.double(obj$pen), as.double(obj$pene),
                         as.double(tol), as.integer(maxit), as.integer(maxitalgo),
                         as.double(tolalgo), info = integer(1), iter = integer(1),
                         lam = double(1), cv=double(1), as.character(typels2),
