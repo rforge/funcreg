@@ -13,12 +13,12 @@
  and the number of basis is assumed to be known. 
 }
 \usage{
-coefEst(y, t, lam, k, L=2, rangeval = c(0,1),
+coefEst(y, t, lam, k, L=2,
         create_basis=create.bspline.basis, ...)
 
-nlCoefEst(y, t, lam, k, L=2, rangeval = c(0,1),
+nlCoefEst(y, t, lam, k, L=2,
           create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-          typels=c("brent","grid"), ...)
+          typels=c("brent","grid"), addDat=FALSE, ...)
 
 makeLinFda(obj, npoints=200)
 
@@ -43,9 +43,6 @@ logFda(obj)
           derivative or a linear differential operator (see
           \code{\link{eval.penalty}}).}
 	
-\item{rangeval}{The time interval over which the basis are defined (see
-  \code{\link{create.bspline.basis}}).}
-
 \item{create_basis}{The function used to create the basis object (see
   \code{\link{create.bspline.basis}}).}
 
@@ -70,6 +67,9 @@ logFda(obj)
 
 \item{typels}{The \code{nlCoefEst} is based on Newton with line
   search. The argument refers to the method used for the line search}
+
+\item{addDat}{If TRUE, fake observations are added before and after
+  assuming stationarity. for the estimation, the time span is expanded accordingly.}
 }
 
 \details{
@@ -109,7 +109,6 @@ The object of class "myfda" is a list containing at least:
 
  }
 
-
  \references{
    Ramsay, James O., & Silverman, Bernard W. (2005), 
    Functional Data Analysis, \emph{Springer}, New York.
@@ -136,5 +135,15 @@ plot(res,1:2)
 
 ## Transform the myfda object into an fd object
 resfd <- as.fd(resLin)
+
+## Nonlinear Estimation with zeros
+data(simData)
+t <- seq(0,1,length.out=5)
+res <- nlCoefEst(y=simData, t=t, lam=0.003, k=7)
+res
+res <- nlCoefEst(y=simData, t=t, lam=0.003, k=7, addDat=TRUE)
+res
+
+
 }
 

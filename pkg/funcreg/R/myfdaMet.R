@@ -1,3 +1,35 @@
+print.myfdaCV <- function(x, digits=4, conv=FALSE, ...)
+    {
+        cat("Cross-Validation of Non-linear FDA Fit\n")
+        cat("**************************************\n")
+        if (all(dim(x$cv)==1))
+            {
+                cat("CV = ", round(c(x$cv), digits), "\n")
+            } else {
+                print.default(format(x$cv, digits=digits), quote=FALSE,
+                              print.gap=2L)
+            }
+        if (any(!x$convergence) & !conv)
+            cat("Warning: Some estimations did not converge. Print with conv=TRUE for details\n")
+        if (conv)
+            {
+                cat("\n Proportion of Y used in the CV\n")
+                cat("********************************\n")
+                t <- dim(x$info)[1]
+                n <- dim(x$info)[2]
+                nlam <- dim(x$info)[3]
+                nk <- dim(x$info)[4]
+                info <- x$info
+                res <- sapply(1:nk, function(i) sapply(1:nlam, function(j)
+                    sum(info[,,j,i]==0)))
+                res <- res/(t*n)
+                res <- matrix(c(res), nlam, nk)
+                dimnames(res) <- dimnames(x$cv)
+                print.default(format(res, digits=digits), quote=FALSE,
+                              print.gap=2L)
+            }
+        invisible(x)
+    }
 
 print.myfda <- function(x, ...)
     {
@@ -12,7 +44,9 @@ print.myfda <- function(x, ...)
 
 plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, ...)
     {
-        t <- seq(x$basis$rangeval[1], x$basis$rangeval[2], len=npoints)
+        #        t <- seq(x$basis$rangeval[1], x$basis$rangeval[2], len=npoints)
+        ranget <- range(x$t)
+        t <- seq(ranget[1], ranget[2], len=npoints)
         if (is.null(which))
             {
                 

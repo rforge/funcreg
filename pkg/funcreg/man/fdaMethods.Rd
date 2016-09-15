@@ -1,6 +1,7 @@
 \name{myfdamethod}
 \alias{print.myfda}
 \alias{plot.myfda}
+\alias{print.myfdaCV}
 	
 \title{Methods for Functional Data Fit}
 
@@ -12,6 +13,8 @@
 
 \method{print}{myfda}(x, ...)
 
+\method{print}{myfdaCV}(x, digits=4, conv=FALSE, ...)
+
 }
 \arguments{
   \item{x}{Object of class "myfda" (see \code{\link{coefEst}}).}
@@ -22,6 +25,10 @@
   observations are added to the graph}
   
 \item{npoints}{The number of points used to plot the curves}
+
+\item{digits}{The number of digits to be printed}
+
+\item{conv}{Shall the information about convergence be printed}
 
 \item{...}{Other argument that is passed to the \code{plot} or
   \code{print} methods}

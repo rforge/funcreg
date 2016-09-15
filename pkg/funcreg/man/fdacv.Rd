@@ -7,11 +7,11 @@
 \description{ The functions compute the leave-one-out cross-validation of functional
  data. It applies also to already estimated models.}
 \usage{ 
-nlFdaCV(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
+nlFdaCV(y, t, lamvec, kvec, L=2,
         create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-         obj=NULL, typels=c("brent","grid"), ...)
+         obj=NULL, typels=c("brent","grid"), addDat=FALSE, ...)
 
-fdaCV(y, t, lamvec, kvec, L=2, rangeval = c(0,1),
+fdaCV(y, t, lamvec, kvec, L=2,
       create_basis=create.bspline.basis, obj=NULL, ...)
 }
 \arguments{
@@ -32,9 +32,6 @@ number of rows of \code{y}. It must have a range inside
 nonnegative integer defining an order of a derivative or a linear
 differential operator (see \code{\link{eval.penalty}}).}
 
-\item{rangeval}{The time interval over which the basis are defined (see
-  \code{\link{create.bspline.basis}}).}
-
 \item{create_basis}{The function used to create the basis object (see
   \code{\link{create.bspline.basis}}).}
 
@@ -48,6 +45,9 @@ differential operator (see \code{\link{eval.penalty}}).}
 
 \item{typels}{The \code{nlCoefEst} is based on Newton with line
   search. The argument refers to the method used for the line search}
+
+\item{addDat}{If TRUE, fake observations are added before and after
+  assuming stationarity. for the estimation, the time span is expanded accordingly.}
 
 \item{...}{Other argument that is passed to \code{create_basis} (see \code{\link{create.bspline.basis}}).}
 }
@@ -105,6 +105,13 @@ nlFdaCV(obj=res)
 # CV with the estimation
 cv <- nlFdaCV(y=GDPv56,t,10^seq(-5,1,len=4), k=5:7)
 
+## Nonlinear Estimation with zeros
+##################################
+
+data(simData)
+t <- seq(0,1,length.out=5)
+cv <- nlFdaCV(y=simData, t=t, lam=c(1e-5, 1e-2), k=c(6:8), addDat=TRUE)
+print(cv, conv=TRUE)
 
 }
 

@@ -13,28 +13,28 @@
   nonlinear fit.}
 
 \usage{
-nlGetLam(y, t, lamInt, k, L=2, rangeval = c(0,1),
+nlGetLam(y, t, lamInt, k, L=2,
          create_basis=create.bspline.basis, maxit=100, tol=1e-8,
          maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"),
-         typels=c("brent","grid"), ...)
+         typels=c("brent","grid"), addDat=FALSE, ...)
 
-nlGetLandKopt(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
+nlGetLandKopt(y, t, lamInt, kvec, L=2,
               create_basis=create.bspline.basis, maxit=100, tol=1e-7,
               maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"),
-              typels=c("brent","grid"), ...)
+              typels=c("brent","grid"), addDat=FALSE, ...)
 
-nlGetLandK(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
+nlGetLandK(y, t, lamvec, kvec, L=2,
            create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-           typels=c("brent","grid"), ...)
+           typels=c("brent","grid"), addDat=FALSE, ...)
 
-getLam(y, t, lamInt, k, L=2, rangeval = c(0,1),
+getLam(y, t, lamInt, k, L=2,
        create_basis=create.bspline.basis, 
        maxitalgo=100, tolalgo=1e-7, type=c("Brent","GS"), ...)
 
-getLandK(y, t, lamvec, kvec, L=2, rangeval=c(0,1),
+getLandK(y, t, lamvec, kvec, L=2,
          create_basis=create.bspline.basis, ...)
 
-getLandKopt(y, t, lamInt, kvec, L=2, rangeval=c(0,1),
+getLandKopt(y, t, lamInt, kvec, L=2,
             create_basis=create.bspline.basis, 
             maxitalgo=100, tolalgo=1e-6, type=c("Brent", "GS"), ...)
 }
@@ -61,9 +61,6 @@ number of rows of \code{y}. It must have a range inside
 nonnegative integer defining an order of a derivative or a linear
 differential operator (see \code{\link{eval.penalty}}).}
 
-\item{rangeval}{The time interval over which the basis are defined (see
-  \code{\link{create.bspline.basis}}).}
-
 \item{create_basis}{The function used to create the basis object (see
   \code{\link{create.bspline.basis}}).}
 
@@ -83,6 +80,9 @@ differential operator (see \code{\link{eval.penalty}}).}
 
 \item{typels}{The \code{nlCoefEst} is based on Newton with line
   search. The argument refers to the method used for the line search}
+
+\item{addDat}{If TRUE, fake observations are added before and after
+  assuming stationarity. for the estimation, the time span is expanded accordingly.}
 
 \item{...}{Other argument that is passed to \code{create_basis}}  (see
 \code{\link{create.bspline.basis}}).}
