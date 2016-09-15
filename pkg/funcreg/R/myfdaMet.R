@@ -42,11 +42,16 @@ print.myfda <- function(x, ...)
     }
 
 
-plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, ...)
+plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, add=FALSE, ...)
     {
         #        t <- seq(x$basis$rangeval[1], x$basis$rangeval[2], len=npoints)
         ranget <- range(x$t)
         t <- seq(ranget[1], ranget[2], len=npoints)
+        if (add)
+            {
+                if (is.null(which))
+                    stop("To add lines, which must be selected")
+            }
         if (is.null(which))
             {
                 
@@ -64,15 +69,22 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, ...)
                 yhat <- as.matrix(yhat)
                 yhat <- x$link(yhat)                
                 ylim <- range(c(yhat, x$y[,which]), na.rm=TRUE)
-                plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
-                     ylim = ylim, type="l", ...)
-                if (addpoints)
-                    points(x$t, x$y[,which[1]], pch=21, col=1)                
-                for (i in which[-1])
+                if (add)
                     {
-                        lines(t,yhat[,i], col=i, lty=2)                        
+                        if (length(which)>1)
+                            stop("Only one line at a time can be added")
+                        lines(t,yhat[,1], ...)                        
+                    } else {
+                        plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
+                             ylim = ylim, type="l", ...)
                         if (addpoints)
-                            points(x$t, x$y[,i], pch=21, col=i)                
+                            points(x$t, x$y[,which[1]], pch=21, col=1)                
+                        for (i in which[-1])
+                            {
+                                lines(t,yhat[,i], col=i, lty=2)                        
+                                if (addpoints)
+                                    points(x$t, x$y[,i], pch=21, col=i)                
+                            }
                     }
             }
     }

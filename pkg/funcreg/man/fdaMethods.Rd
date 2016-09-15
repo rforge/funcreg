@@ -9,7 +9,8 @@
  These are the plot and print methods which are associated with the objects of class "myfda".
 }
 \usage{
-\method{plot}{myfda}(x, which=NULL, addpoints=TRUE, npoints=100, ...)
+\method{plot}{myfda}(x, which=NULL, addpoints=TRUE, npoints=100,
+ add=FALSE, ...)
 
 \method{print}{myfda}(x, ...)
 
@@ -30,6 +31,9 @@
 
 \item{conv}{Shall the information about convergence be printed}
 
+\item{add}{If \code{TRUE}, the line associated with "which" is added to the
+  existing graph}
+
 \item{...}{Other argument that is passed to the \code{plot} or
   \code{print} methods}
 }
@@ -43,6 +47,10 @@ res <- coefEst(y=GDPv56, t=t, lam=0.003, k=15)
 print(res)
 plot(res)
 plot(res,which=1:3)
+
+res2 <- coefEst(y=GDPv56, t=t, lam=0.3, k=15)
+plot(res,which=1)
+plot(res2,which=1, add=TRUE, col=2, lty=3)
 
 }
 
