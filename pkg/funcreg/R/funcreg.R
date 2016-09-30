@@ -534,9 +534,9 @@ summary.funcreg <- function(object, ...)
                 tVec <- c(tVec, meanVec[1]/sdVec[1])
                 pval <- c(pval, 2*pnorm(-abs(tVec[1]))) 
             }
+        cname <- c(cname, names(object$X))
         for (i in 1:length(object$res$betaestbifdList))
             {
-                cname <- c(cname, names(object$X))
                 rb1 <- .meanFuncreg(object, i)
                 meanVec <- c(meanVec, rb1$mean)
                 sdVec <- c(sdVec, rb1$sd)
