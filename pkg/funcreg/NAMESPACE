@@ -13,7 +13,7 @@ export(coefEst, fdaCV, getLam, getLandKopt, getLandK, nlCoefEst,
        plot.myfda, funcreg, vcov.funcreg, summary.funcreg,
        plotConfInt, plotCoef, print.funcreg, fitted.funcreg, residuals.funcreg,
        makeLinFda, logFda, as.fd.myfda, funcregCV, getFuncregLam,
-       print.myfdaCV)
+       print.myfdaCV, fitted.myfda, "[.myfda")
  
 S3method(print, myfda)
 S3method(print, myfdaCV)
@@ -23,7 +23,9 @@ S3method(print, funcreg)
 S3method(summary, funcreg)
 S3method(vcov, funcreg)
 S3method(fitted, funcreg)
+S3method(fitted, myfda)
 S3method(residuals, funcreg)
+S3method("[", myfda)
 
 
 

@@ -2,6 +2,7 @@
 \alias{print.myfda}
 \alias{plot.myfda}
 \alias{print.myfdaCV}
+\alias{[.myfda}
 	
 \title{Methods for Functional Data Fit}
 
@@ -15,6 +16,8 @@
 \method{print}{myfda}(x, ...)
 
 \method{print}{myfdaCV}(x, digits=4, conv=FALSE, ...)
+
+\method{[}{myfda}(x, i=NULL)
 
 }
 \arguments{
@@ -34,6 +37,8 @@
 \item{add}{If \code{TRUE}, the line associated with "which" is added to the
   existing graph}
 
+\item{i}{The selection index.}
+
 \item{...}{Other argument that is passed to the \code{plot} or
   \code{print} methods}
 }
@@ -48,9 +53,14 @@ print(res)
 plot(res)
 plot(res,which=1:3)
 
+##  Using the operator []
+plot(res[1:4])
+
 res2 <- coefEst(y=GDPv56, t=t, lam=0.3, k=15)
 plot(res,which=1)
 plot(res2,which=1, add=TRUE, col=2, lty=3)
+
+
 
 }
 

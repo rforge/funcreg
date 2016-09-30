@@ -355,32 +355,45 @@ c     ***********************************************************
       subroutine nlcrval(y, basisval, n, k, ka, t, nlam, nk, maxk,
      *     lambda, pen, pene, tol, maxit, info, cv, typels,
      *     nwhich, which)
-      integer n, t, i, j, nlam, maxit, nk, l, maxkn, cnt, s
-      integer k(nk), info(nwhich,n,nlam,nk), ka(nk)
+      integer n, t, i, j, nlam, maxit, nk, l, maxkn, cnt(n), s
+      integer k(nk), info(nwhich,n,nlam,nk), ka(nk),cn
       integer nwhich, which(nwhich)
       double precision y(t,n), basisval(t,maxk,nk)
-      double precision pene(maxk+1,maxk,nk)
+      double precision pene(maxk+1,maxk,nk), cvi(n)
       double precision lambda(nlam), pen(maxk,maxk,nk)
-      double precision cv(nlam,nk), yhat(n), tol, sumcv
+      double precision cv(nlam,nk), yhat(n), tol
       character typels
-      cv = 0.0d0
       do l=1,nk
          do j=1,nlam
+            cvi = 0.0d0
+            cnt = 0
+            cn = 0
             do i=1,nwhich
                call nlyhati(y, basisval(:,1:k(l),l), n, k(l), ka(l), t,  
      *              lambda(j), pen(1:k(l), 1:k(l), l), which(i), 
      *              pene(1:(k(l)+1), 1:ka(l), l), tol, maxit,
      *              info(i,:,j,l), yhat, typels)
-               cnt = 0
-               sumcv = 0.0d0
                do s=1,n
                   if (info(i,s,j,l) == 0) then
-                     sumcv = sumcv + (yhat(s)-y(which(i),s))**2
-                     cnt = cnt+1
+                     cvi(s) = cvi(s) + (yhat(s)-y(which(i),s))**2
+                     cnt(s) = cnt(s)+1
+                  end if
+                  if (i==nwhich .and. cnt(s)==0) then
+                     cnt(s) = 1
                   end if
                end do
-               cv(j,l) = cv(j,l) + sumcv/cnt
             end do
+c     Here I am trying something else
+c     All i with at least one t that did not converge is excluded from CV
+            do s=1,n
+               if (cnt(s)==nwhich) then
+                  cn = cn + 1
+                  cv(j,l) = cv(j,l) + cvi(s)/cnt(s)
+               end if
+            end do
+            cv(j,l) = cv(j,l)/cn
+c     Replace the above the the line below to come back to the previous method
+c     cv(j,l) = sum(cvi/cnt)/n
          end do
       end do
       end

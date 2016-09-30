@@ -15,7 +15,7 @@
 #### Y is a matrix
 nlCoefEst <- function(y, t, lam, k, L=2, 
                       create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-                      typels=c("brent","grid"), addDat=FALSE,  ...)
+                      typels=c("brent","grid"), addDat=FALSE, rangeval=NULL, ...)
     {
         type <- "Non-Linear FDA: Exp() fit"
         typels <- match.arg(typels)
@@ -37,7 +37,13 @@ nlCoefEst <- function(y, t, lam, k, L=2,
                 tEst <- t
                 yEst <- y
             }
-        rangeval <- range(tEst)
+        if (is.null(rangeval))
+            {
+                rangeval <- range(tEst)
+            } else {
+                if (min(tEst)<rangeval[1] | max(tEst)>rangeval[2])
+                    stop("t is not in the range of rangeval")
+            }
         basis <- create_basis(rangeval,k, ...)
         basisval <- eval.basis(tEst,basis)
         pen <- eval.penalty(basis,L)
@@ -114,8 +120,8 @@ nlFdaCV <- function(y, t, lamvec, kvec, L=2,
                         t <- obj$t
                         which <- 1:nrow(y)
                         nwhich <- nrow(y)
-                    }
-                rangeval <- range(t)
+                    }                
+                rangeval <- obj$basis$rangeval
                 kvec <- obj$basis$nbasis; n <- ncol(y)
                 L <- obj$L; maxit <- obj$maxit; tol <- obj$tol
                 T <- nrow(y); nlam <- 1; lamvec <- obj$lambda

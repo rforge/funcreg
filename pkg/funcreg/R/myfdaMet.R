@@ -42,6 +42,17 @@ print.myfda <- function(x, ...)
     }
 
 
+fitted.myfda <- function(object, t=NULL, ...)
+    {
+        if (is.null(t))
+            t <- object$t
+        basisval <- eval.basis(t,object$basis)
+        yhat <- basisval%*%object$coefficients
+        yhat <- object$link(yhat)
+        yhat
+    }
+        
+
 plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, add=FALSE, ...)
     {
         #        t <- seq(x$basis$rangeval[1], x$basis$rangeval[2], len=npoints)
@@ -54,20 +65,15 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, add=FALSE, ..
             }
         if (is.null(which))
             {
-                
-                basisval <- eval.basis(t,x$basis)
-                yhat <- basisval%*%x$coefficients
-                yhat <- x$link(yhat)
+                yhat <- fitted(x, t)
                 ylim <- range(yhat, na.rm=TRUE)
                 plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
                      ylim = ylim, type="l", ...)
-                for (i in 2:ncol(x$y))
-                    lines(t,yhat[,i], col=i, lty=2)
-            } else {                
-                basisval <- eval.basis(t,x$basis)
-                yhat <- basisval%*%x$coefficients[,which]
-                yhat <- as.matrix(yhat)
-                yhat <- x$link(yhat)                
+                if (ncol(x$y)>1)
+                    for (i in 2:ncol(x$y))
+                        lines(t,yhat[,i], col=i, lty=2)
+            } else {
+                yhat <- fitted(x, t)[,which, drop=FALSE]
                 ylim <- range(c(yhat, x$y[,which]), na.rm=TRUE)
                 if (add)
                     {
@@ -89,3 +95,14 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, add=FALSE, ..
             }
     }
 
+
+"[.myfda" <- function(x, i=NULL)
+    {
+        if (is.null(i))
+            return(x)
+        if (!is.null(x$convergence))
+            x$convergence <- x$convergence[i]
+        x$coefficients <- x$coefficients[,i,drop=FALSE]
+        x$y <- x$y[,i,drop=FALSE]
+        x
+    }

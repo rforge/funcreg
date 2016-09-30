@@ -13,9 +13,11 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             Yfd <- makeLinFda(Yfd)
         data <- list(t=Yfd$t, Y=Yfd$y)
         if (!is.null(colnames(Yfd$y)))
-            tmp <- colnames(Yfd$y)
-        else
-            tmp <- paste(namey, "_", 1:ncol(Yfd$y), sep="")
+            {
+                tmp <- colnames(Yfd$y)                
+            } else {
+                tmp <- paste(namey, "_", 1:ncol(Yfd$y), sep="")
+            }
         Yfd <- as.fd(Yfd, fdnames=list("time", tmp, namey))
         Xfd <- all[-1]
         names(Xfd) <- namex
@@ -25,7 +27,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             {
                 if (!is.null(colnames(Xfd[[i]]$y)))
                     tmp <- colnames(Xfd[[i]]$y)
-                else
+                else 
                     tmp <- paste(namex[i], "_", 1:ncol(Xfd[[i]]$y), sep="")
                 Xfd[[i]] <- as.fd(Xfd[[i]], fnames=list("time", tmp, namex[i]))
             }
@@ -189,7 +191,6 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         ipyy <- inprod(yfdobj$basis, yfdobj$basis)
         ipyy <- sapply(1:n, function(i) crossprod(yfdobj$coefs[,i],
                                                   ipyy%*%yfdobj$coefs[,i]))
-        
         list(ipya=ipya, Rt=Rt, Rs=Rs, R0=R0, H=H, G=G, ipaa=ipaa, ipabt=ipabt,
              ipbbt=ipbbt, lam=lam, lam0=lam0, k0=k0, kb=kb, kx=kx, ky=ky,Fmat=Fmat,
              bx=bx, by=by, n=n, nx=nx, ncoef=k0+sum(kb[,1]*kb[,2]),ipyy=ipyy,

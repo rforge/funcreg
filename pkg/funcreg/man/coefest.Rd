@@ -3,6 +3,7 @@
 \alias{nlCoefEst}
 \alias{makeLinFda}
 \alias{logFda}
+\alias{fitted.myfda}
 \alias{as.fd.myfda}
 
 \title{Functional Data Fit}
@@ -18,21 +19,24 @@ coefEst(y, t, lam, k, L=2,
 
 nlCoefEst(y, t, lam, k, L=2,
           create_basis=create.bspline.basis, maxit=100, tol=1e-8,
-          typels=c("brent","grid"), addDat=FALSE, ...)
+          typels=c("brent","grid"), addDat=FALSE, rangeval=NULL, ...)
 
 makeLinFda(obj, npoints=200)
 
 logFda(obj)
 
 \method{as.fd}{myfda}(x, fdnames=NULL, npoints=200, ...)
+
+\method{fitted}{myfda}(object, t=NULL, ...)
 }
 \arguments{
 \item{y}{A \eqn{T \times n} matrix of data points, when \eqn{T} is the number
   of periods and \eqn{n} the number of individuals.}
 
-\item{t}{A numeric vector of time units. The number of elements is equal
-  to the number of rows of \code{y}. It must have a range inside
-  \code{rangeval}.}
+\item{t}{A numeric vector of time units. In \code{coefEst} and
+  \code{nlCoefEst}, the number of elements is equal
+  to the number of rows of \code{y}. For the \code{fitted} method, it
+  can be a fine grid, and the range must be inside the range of the basis.}
 
 \item{lam}{The regularization parameter that penalizes for the absence of
   smoothness.}
@@ -62,6 +66,8 @@ logFda(obj)
 
 \item{x}{Object of class "myfda"}
 
+\item{object}{Object of class "myfda"}
+
 \item{fdnames}{Names of elements of the "fd" object (see
   \code{\link{fd}})}
 
@@ -69,7 +75,11 @@ logFda(obj)
   search. The argument refers to the method used for the line search}
 
 \item{addDat}{If TRUE, fake observations are added before and after
-  assuming stationarity. for the estimation, the time span is expanded accordingly.}
+  assuming stationarity. for the estimation, the time span is expanded
+  accordingly.}
+
+\item{rangeval}{This can be set if the basis is defined on a range other
+  than \code{range(t)}.} 
 }
 
 \details{
@@ -121,6 +131,8 @@ t <- seq(0,1,len=nrow(GDPv56))
 ## Linear estimation
 res <- coefEst(y=GDPv56, t=t, lam=0.003, k=15)
 res
+
+cbind(data=GDPv56[,1], fitted=fitted(res)[,1])
 
 ## Nonlinear Estimation
 res <- nlCoefEst(y=GDPv56, t=t, lam=0.003, k=15)
