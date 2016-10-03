@@ -15,7 +15,7 @@
 
 \usage{
 funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
-                     k, regularized=TRUE, CstInt=FALSE, CV=FALSE, ...)
+        k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL, ...)
 
 \method{print}{funcreg}(x, ...)
 
@@ -63,6 +63,9 @@ funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
    \code{FALSE}, it is a one dimensional functional parameter.}
 
  \item{CV}{if \code{TRUE}, it computes the cross-validation.}
+
+ \item{data}{An optional list of \code{myfda} objects, which are the
+ functional data included in the formula \code{form}}
  
  \item{...}{For \code{funcreg}, it is other argument that is passed to \code{create_basis}
    (see \code{\link{create.bspline.basis}}). For the methods, it is the

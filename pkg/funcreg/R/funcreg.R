@@ -1,5 +1,5 @@
 funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
-                     k, regularized=TRUE, CstInt=FALSE, CV=FALSE, ...)
+                     k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL, ...)
     {
         tr <- terms(form)
         call <- match.call()
@@ -7,7 +7,10 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             stop("You cannot run a functional regression without response variable")
         namey <- rownames(attr(tr, "factors"))[1]
         namex <- colnames(attr(tr, "factors"))
-        all <- eval(attr(tr, "variables"),  )
+        if (is.null(data))
+            all <- eval(attr(tr, "variables"))
+        else
+            all <- eval(attr(tr, "variables"), envir=data)
         Yfd <- all[[1]]
         if (strtrim(Yfd$type, 3)=="Non")
             Yfd <- makeLinFda(Yfd)
