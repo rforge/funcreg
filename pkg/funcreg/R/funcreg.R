@@ -413,7 +413,7 @@ funcregCV <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
             } else {
                 obj <- funcreg(form=form, create_basis=create_basis, LD=LD,
                                lambda=lambda, k=k, CstInt=CstInt, CV=TRUE,
-                               regularized=regularized, alpha=alpha, ...)
+                               regularized=regularized, alpha=alpha, data=data, ...)
                 res <- obj$res[c("CV","cvInfo")]
             }
         ans <- res$CV
