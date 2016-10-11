@@ -15,7 +15,9 @@
 
 \usage{
 funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
-        k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL, ...)
+                    k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL,
+                    alpha=1e-5, optAlpha=FALSE,
+                    controlAlpha=list(), ...)
 
 \method{print}{funcreg}(x, ...)
 
@@ -55,9 +57,8 @@ funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
    functional parameter and so on. If it is a scalar, it is assumed that
    the number of basis is the same for all functional parameters.}
 
- \item{regularized}{If \code{TRUE}, the system is regularized if it is
- badly conditioned. The value is slowly increases until the linear
- system of equation can be solved.}
+ \item{regularized}{If \code{TRUE}, the system is regularized by add
+ \code{alpha} to the main diagonal of the regression matrix}
 	
  \item{CstInt}{If \code{TRUE}, the intercept is assumed constant. If
    \code{FALSE}, it is a one dimensional functional parameter.}
@@ -66,6 +67,17 @@ funcreg(form, create_basis=create.bspline.basis, LD=2, lambda,
 
  \item{data}{An optional list of \code{myfda} objects, which are the
  functional data included in the formula \code{form}}
+
+ \item{alpha}{The regularization parameter. The value is added to the
+ diagonal of the regression matrix to make sure it is positive
+ definite.}
+
+ \item{optAlpha}{If \code{TRUE}, the regularization parameter is the one
+   that minimizes the cross-validation using the Brent method}
+
+ \item{controlAlpha}{A list of tuning parameter for the choice of the
+ optimal \code{alpha}. The default parameters are \code{maxit=100} ,
+ \code{tol=1e-5}, and \code{intAlpha=c(1e-11, 1e-4)}. }
  
  \item{...}{For \code{funcreg}, it is other argument that is passed to \code{create_basis}
    (see \code{\link{create.bspline.basis}}). For the methods, it is the
@@ -114,5 +126,12 @@ summary(res)
 plot(fitted(res))
 
 plot(residuals(res))
+
+## Getting the optimal regularization parameter
+res <- funcreg(yfd~xfd, k=c(5,5), lambda=c(.001,.001,.001),
+               optAlpha=TRUE)
+res
+
+
 }
 

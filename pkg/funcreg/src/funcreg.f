@@ -29,7 +29,8 @@ c     ...<phi_nx,phi_2'>,<phi_3,.phi_3'>,.....
 c     kb(:,1) are the number of t-basis and kb(:,2) the number of s-basis
       
       subroutine prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, cmat, dmat, lam0, lam)
+     *     alpha, n, nx, k0, kb, mkbt, mkbs, ncoef, cmat, dmat, lam0,
+     *     lam)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, j, i, start
       integer ncoefi, sc1, sc2, t, sc12, sc22, sc10
       double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
@@ -37,7 +38,7 @@ c     kb(:,1) are the number of t-basis and kb(:,2) the number of s-basis
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
       double precision g(n, mkbt, nx), cmat(ncoef,ncoef), dmat(ncoef)
-      double precision sfmat(k0), lam0, lam(nx, 2)
+      double precision sfmat(k0), lam0, lam(nx, 2), alpha
 
       start = 1
       sc1 = 1
@@ -82,6 +83,9 @@ c     kb(:,1) are the number of t-basis and kb(:,2) the number of s-basis
          sc10 = sc10 + kb(j,1)*kb(j,2)
          sc1 = sc10
       end do
+      do j=1,ncoef
+         cmat(j,j) = cmat(j,j) + alpha
+      end do
       end
 
 
@@ -116,7 +120,7 @@ c     kb(:,1) are the number of t-basis and kb(:,2) the number of s-basis
 c     This is the one called from R to simply estimate the model
 C     And provide the information to compute the variance
       subroutine funcregwv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha,
      *     coef, info, cmat, dmat, cmat0)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, ip(ncoef)
       integer info, lworkmax, lwork, info2
@@ -126,10 +130,10 @@ C     And provide the information to compute the variance
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
       double precision g(n, mkbt, nx), cmat(ncoef,ncoef), coef(ncoef)
-      double precision lam0, lam(nx, 2), work(lworkmax)
+      double precision lam0, lam(nx, 2), work(lworkmax), alpha
       double precision lam02, lam2(nx,2), cmat0(ncoef,ncoef),dmat(ncoef)
 
-      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat, alpha,
      *     n, nx, k0, kb, mkbt, mkbs, ncoef, cmat, coef, lam0, lam)
       info = 0
       lwork = -1
@@ -143,14 +147,14 @@ C     And provide the information to compute the variance
       end if
       lam02 = 0.0d0
       lam2 = 0.0d0
-      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat, 0.0d0, 
      *     n, nx, k0, kb, mkbt, mkbs, ncoef, cmat0, dmat, lam02, lam2)
       
       end
 
 
       subroutine funcreg(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha,
      *     coef, info)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, ip(ncoef)
       integer info, lworkmax, lwork, info2
@@ -160,9 +164,9 @@ C     And provide the information to compute the variance
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
       double precision g(n, mkbt, nx), cmat(ncoef,ncoef), coef(ncoef)
-      double precision lam0, lam(nx, 2), work(lworkmax)
+      double precision lam0, lam(nx, 2), work(lworkmax), alpha
 
-      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat, alpha,
      *     n, nx, k0, kb, mkbt, mkbs, ncoef, cmat, coef, lam0, lam)
       info = 0
       lwork = -1
@@ -178,7 +182,7 @@ C     And provide the information to compute the variance
 
    
       subroutine funcregi(g, h, i, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha,
      *     ipyy, coef, cv, info)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, i, info
       integer j, s(n-1)
@@ -187,7 +191,7 @@ C     And provide the information to compute the variance
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
       double precision g(n, mkbt, nx), coef(ncoef)
-      double precision lam0, lam(nx, 2), cv
+      double precision lam0, lam(nx, 2), cv, alpha
 
       do j=1,(n-1)
          if (j < i) then
@@ -198,19 +202,19 @@ C     And provide the information to compute the variance
       end do      
       
       call funcreg(g(s,:,:), h(s,:,:), r0, rt, rs, ipaa, ipabt, ipbbt,
-     *     fmat(s,:),
-     *     n-1, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, coef, info)
+     *     fmat(s,:), n-1, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     alpha, coef, info)
       
       call inprodresi(g(i,:,:), h(i,:,:), ipaa, ipabt, ipbbt, fmat(i,:),
-     *     nx, k0, kb, mkbt, mkbs, ncoef, coef, ipyy, cv)      
+     *     alpha, nx, k0, kb, mkbt, mkbs, ncoef, coef, ipyy, cv)      
       end
 
       
-      subroutine prepfri(g, h, ipaa, ipabt, ipbbt, fmat,
+      subroutine prepfri(g, h, ipaa, ipabt, ipbbt, fmat, alpha,
      *     nx, k0, kb, mkbt, mkbs, ncoef, cmat, dmat)
       integer nx, k0, kb(nx,2), mkbt, mkbs, ncoef, j, i, start
       integer ncoefi, sc1, sc2, t, sc12, sc22, sc10
-      double precision fmat(k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
+      double precision fmat(k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2), alpha
       double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), h(mkbs,nx)
       double precision g(mkbt, nx), cmat(ncoef,ncoef), dmat(ncoef)
       
@@ -251,7 +255,10 @@ C     And provide the information to compute the variance
          sc10 = sc10 + kb(j,1)*kb(j,2)
          sc1 = sc10
       end do
-
+      do i=1,ncoef
+         cmat(i,i) = cmat(i,i) + alpha
+      end do
+            
       end
       
       subroutine sysquadra(a,n,x,q)
@@ -272,25 +279,23 @@ C     And provide the information to compute the variance
 
       end
       
-      subroutine inprodresi(g, h, ipaa, ipabt, ipbbt, fmat,
+      subroutine inprodresi(g, h, ipaa, ipabt, ipbbt, fmat, alpha,
      *     nx, k0, kb, mkbt, mkbs, ncoef, coef, ipyy, ipres)
       integer nx, k0, kb(nx,2), mkbt, mkbs, ncoef, i
       double precision fmat(k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
       double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), h(mkbs,nx)
       double precision g(mkbt, nx), cmat(ncoef,ncoef), dmat(ncoef)
-      double precision ipyy, ipres, tmp, coef(ncoef)
+      double precision ipyy, ipres, tmp, coef(ncoef), alpha
 
-      call prepfri(g, h, ipaa, ipabt, ipbbt, fmat,
+      call prepfri(g, h, ipaa, ipabt, ipbbt, fmat, alpha,
      *     nx, k0, kb, mkbt, mkbs, ncoef, cmat, dmat)
 
       call sysquadra(cmat, ncoef, coef, tmp)
       ipres = ipyy-2*sum(coef*dmat)+tmp
       end
       
-      
-
       subroutine funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha,
      *     ipyy, cv, info)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, info(n), i
       double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
@@ -298,29 +303,27 @@ C     And provide the information to compute the variance
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
       double precision g(n, mkbt, nx), coef(ncoef), cvv(n), cv
-      double precision lam0, lam(nx, 2) 
-
+      double precision lam0, lam(nx, 2), alpha 
+      
       do i=1,n
          call funcregi(g, h, i, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *        n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *        n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha, 
      *        ipyy(i), coef, cvv(i), info(i))
       end do
-
+      
       cv = sum(cvv)
       end
 
-
       subroutine dfuncregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, alpha, 
      *     ipyy, dcv)
       integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, info(n), i, j, t
       double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
       double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), ipyy(n)
       double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
       double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
-      double precision g(n, mkbt, nx), dcv(1+2*nx), hder, tmp
+      double precision g(n, mkbt, nx), dcv(1+2*nx), hder, tmp, alpha
       double precision lam0, lam(nx, 2), lamt(nx,2), cvp, cvm, tol
-
       
       tol = 6.1e-6
       hder = tol*max(tol, lam0)
@@ -328,11 +331,11 @@ C     And provide the information to compute the variance
       hder = tmp-lam0
       lamt(1,1) = lam0+hder
       call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam, alpha, 
      *     ipyy, cvp, info)
       lamt(1,1) = lam0-hder      
       call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
-     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lamt(1,1), lam, alpha, 
      *     ipyy, cvm, info)
       dcv(1) = (cvp-cvm)/(2*hder)
       t = 2
@@ -343,16 +346,162 @@ C     And provide the information to compute the variance
             tmp = lamt(i,j)+hder
             hder = tmp-lamt(i,j)
             lamt(i,j) = lam(i,j)+hder
-            call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+            call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat, 
      *           n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lamt,
-     *           ipyy, cvp, info)            
+     *           alpha, ipyy, cvp, info)            
             lamt(i,j) = lam(i,j)-hder
             call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
      *           n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lamt,
-     *           ipyy, cvm, info)
+     *           alpha, ipyy, cvm, info)
             dcv(t) = (cvp-cvm)/(2*hder)
             t = t+1
          end do
       end do
       end
+      
 
+      subroutine funcregopt(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, ipyy, maxita, 
+     *     tola, ax, cx, alpha, infoa, coef, info)
+      integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, ip(ncoef)
+      integer info, lworkmax, lwork, info2, infoa, maxita
+      parameter (lworkmax = 5000)
+      double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
+      double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), ipyy(n)
+      double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
+      double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
+      double precision g(n, mkbt, nx), cmat(ncoef,ncoef), coef(ncoef)
+      double precision lam0, lam(nx, 2), work(lworkmax), alpha
+      double precision tola, ax, cx
+
+      call optalpha(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     ipyy, maxita, tola, ax, cx, alpha, infoa)
+
+      call prepfr(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat, alpha,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, cmat, coef, lam0, lam)
+      info = 0
+      lwork = -1
+      call dsysv('L', ncoef, 1, cmat, ncoef, ip, coef, ncoef, work,
+     *     lwork, info2)
+      lwork = min(lworkmax, int(work(1)))
+      call dsysv('L', ncoef, 1, cmat, ncoef, ip, coef, ncoef, work,
+     *     lwork, info2)
+      if (info2 > 0) then
+         info = 1
+      end if      
+      end
+      
+
+      subroutine optalpha(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam,
+     *     ipyy, maxita, tola, ax, cx, x, infoa)
+      integer n, nx, k0, kb(nx,2), mkbt, mkbs, ncoef, info(n), i, infoa
+      double precision fmat(n, k0), ipbbt(mkbt,mkbt,nx*(nx+1)/2)
+      double precision ipabt(k0, mkbt, nx), ipaa(k0,k0), ipyy(n)
+      double precision rs(mkbs*mkbt, mkbs*mkbt, nx), r0(k0,k0)
+      double precision rt(mkbs*mkbt, mkbs*mkbt, nx), h(n,mkbs,nx)
+      double precision lam0, lam(nx, 2), cv1, cv2, g(n, mkbt, nx)
+      double precision ax, cx, bx, tola, tol1, tol2, tmpl(2)
+      double precision gs, zeps, a, b, d, etemp, fu, fv, fw, fx
+      double precision p,q,r,u,v,w,x,xm,e,u2,fu2
+      gs = 0.3819660
+      e = 0.0d0
+      zeps = epsilon(gs)*1.0e-3
+      infoa = 0
+c     Find the third point between ax and cx
+      tmpl(1) = (1-gs)*ax+gs*cx
+      tmpl(2) = gs*ax+(1-gs)*cx
+
+      call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, tmpl(1),
+     *     ipyy, cv1, info)
+      call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *     n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, tmpl(2),
+     *     ipyy, cv2, info)
+      if (cv1 < cv2) then
+         bx = tmpl(1); cx = tmpl(2); fx = cv1
+      else
+         bx = tmpl(2); ax = tmpl(1); fx = cv2
+      end if
+c     ############################
+      x = bx; w = bx; v = x; fv = fx; fw = fx
+      i = 1; a = ax; b = cx
+      do
+         iter = i
+         if (i>maxita) then
+            infoa = 1
+            exit
+         end if
+         xm = 0.5*(b+a)
+         tol1 = tola*abs(x)+zeps
+         tol2 = 2.0*tol1
+         if (abs(x-xm) <= (tol2-0.5*(b-a))) then
+            exit
+         end if
+         if (abs(e) > tol1) then
+            r = (x-w)*(fx-fv)
+            q = (x-v)*(fx-fw)
+            p = (x-v)*q-(x-w)*r
+            q = 2.0*(q-r)
+            if (q>0.0) then
+               p = -p
+            end if
+            q = abs(q)
+            etemp = e
+            e = d
+            if (abs(p) >= abs(0.5*q*etemp) .or. p <= q*(a-x) .or.
+     *           p >= q*(b-x)) then
+               if (x >= xm) then
+                  e = a-x
+               else
+                  e = b-x
+               end if               
+               d = gs*e
+            else
+               d = p/q
+               u = x+d
+               if (u-a < tol2 .or. b-u < tol2) then
+                  d = sign(tol1,xm-x)
+               end if
+            end if   
+         else
+            if (x >= xm) then
+               e = a-x
+            else
+               e = b-x
+            end if               
+            d = gs*e
+         end if
+         if (abs(d) >= tol1) then
+            u=x+d
+         else
+            u = x+sign(tol1,d)
+         end if
+         u2 = u
+         call funcregcv(g, h, r0, rt, rs, ipaa, ipabt, ipbbt, fmat,
+     *        n, nx, k0, kb, mkbt, mkbs, ncoef, lam0, lam, u2,
+     *        ipyy, fu2, info)         
+         fu = fu2
+         if (fu <= fx) then
+            if (u >= x) then
+               a=x
+            else
+               b=x
+            end if
+            v = w; w = x; x = u; fv = fw; fw = fx; fx = fu
+         else
+            if (u<x) then
+               a=u
+            else
+               b=u
+            end if
+            if (fu <= fw .or. w == x) then
+               v = w; w = u; fv = fw; fw = fu
+            else if (fu <= fv .or. v == x) then
+               v = u; fv = fu
+            end if
+         end if
+         i = i+1
+      end do
+      end

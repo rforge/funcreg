@@ -11,11 +11,12 @@
 
 \usage{
 funcregCV(form, create_basis=create.bspline.basis, LD=2, lambda,
-                      k, CstInt=FALSE, obj=NULL, ...)
+          k, CstInt=FALSE, regularized=TRUE, alpha=1e-5, data=NULL,
+          obj=NULL, ...)
 
 getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
-                          k, CstInt=FALSE, ..., loglam=FALSE,
-                          method="BFGS", optimArg=list())
+              k, regularized=TRUE, CstInt=FALSE, data=NULL, loglam=FALSE,
+              method="BFGS", alpha=1e-5, optimArg=list(), ...)
 }
 
 \arguments{
@@ -33,6 +34,9 @@ getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
    derivative or a linear differential operator (see
    \code{\link{eval.penalty}}).}
 
+ \item{data}{An optional list of \code{myfda} objects, which are the
+ functional data included in the formula \code{form}}
+ 
  \item{lambda}{A vector of regularization parameters that penalizes for the absence of
    smoothness. The dimention is 2 times the number of regressors plus 1
    if there is an intercept and if \code{CstInt=FALSE}. The first is for
@@ -48,16 +52,24 @@ getFuncregLam(form, create_basis=create.bspline.basis, LD=2, lam0,
    functional parameter and so on. If it is a scalar, it is assumed that
    the number of basis is the same for all functional parameters.}
   
+ \item{regularized}{If \code{TRUE}, the system is regularized by add
+ \code{alpha} to the main diagonal of the regression matrix}
+
  \item{CstInt}{If \code{TRUE}, the intercept is assumed constant. If
    \code{FALSE}, it is a one dimensional functional parameter.}
-
+ 
  \item{loglam}{If \code{TRUE}, lam0 is \code{log10(lambda)} and the
    function minimizes \code{CV(10^lam)}. It prevents the lambda's from
    being negative.}
 
  \item{method}{The algorithm used by \code{link{optim}}}
 
- \item{optimArg}{A list of additional arguments to pass to \code{link{optim}}}
+ \item{optimArg}{A list of additional arguments to pass to
+   \code{link{optim}}}
+
+  \item{alpha}{The regularization parameter. The value is added to the
+    diagonal of the regression matrix to make sure it is positive
+    definite.}
  
  \item{...}{Additional arguments to be passed to \code{create_basis}
    (see \code{\link{create.bspline.basis}}).}

@@ -1,16 +1,15 @@
-funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
-                     k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL, ...)
+.prepMat1 <- function(form, create_basis=create.bspline.basis, LD=2,
+                     lambda, k, CstInt=FALSE, data=NULL, ...)
     {
-        tr <- terms(form)
-        call <- match.call()
+        tr <- terms(form)        
         if (attr(tr, "response") != 1)
             stop("You cannot run a functional regression without response variable")
         namey <- rownames(attr(tr, "factors"))[1]
         namex <- colnames(attr(tr, "factors"))
-        if (is.null(data))
+        if (is.null(data)){
             all <- eval(attr(tr, "variables"))
-        else
-            all <- eval(attr(tr, "variables"), envir=data)
+        } else {
+            all <- eval(attr(tr, "variables"), envir=data)}
         Yfd <- all[[1]]
         if (strtrim(Yfd$type, 3)=="Non")
             Yfd <- makeLinFda(Yfd)
@@ -28,10 +27,10 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         nx <- length(Xfd)
         for (i in 1:nx)
             {
-                if (!is.null(colnames(Xfd[[i]]$y)))
+                if (!is.null(colnames(Xfd[[i]]$y))){
                     tmp <- colnames(Xfd[[i]]$y)
-                else 
-                    tmp <- paste(namex[i], "_", 1:ncol(Xfd[[i]]$y), sep="")
+                } else  {
+                    tmp <- paste(namex[i], "_", 1:ncol(Xfd[[i]]$y), sep="")}
                 Xfd[[i]] <- as.fd(Xfd[[i]], fnames=list("time", tmp, namex[i]))
             }
         rangeval <- Yfd$basis$rangeval        
@@ -77,9 +76,36 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                                                    lambda[start])
 		start <- start + 2		
             }
-	chk <- TRUE
-        obj <- .prepMat(Xfd, Yfd, betaList)
+        obj <- .prepMat2(Xfd, Yfd, betaList)
         obj$data <- data
+        list(obj=obj, Intercept=Intercept, Xfd=Xfd, Yfd=Yfd)
+    }
+
+
+funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
+                    k, regularized=TRUE, CstInt=FALSE, CV=FALSE, data=NULL,
+                    alpha=1e-5, optAlpha=FALSE,
+                    controlAlpha=list(), ...)
+    {
+        if (!regularized)
+            alpha <- 0
+        call <- match.call()
+	chk <- TRUE
+        obj1 <- .prepMat1(form=form, create_basis=create_basis, LD=LD,
+                                    lambda=lambda, k=k, CstInt=CstInt, data=data, ...)
+        obj <- obj1$obj
+        obj$alpha <- alpha
+        if (optAlpha)
+            {
+                alphaArg <- list(maxit=100, tol=1e-5, intAlpha=c(1e-11,1e-4))
+                nmsC <- names(alphaArg)                
+                alphaArg[namc <- names(controlAlpha)] <- controlAlpha
+                if (length(noNms <- namc[!namc %in% nmsC])) 
+                    warning("unknown names in controlAlpha: ", paste(noNms, collapse = ", "))
+                alphaArg$obj <- obj
+                alpha <- do.call(.funcregGetAlpha, alphaArg)
+                obj$alpha <- alpha$alpha
+            }
         resFin <- .funcregFit(obj)
         if (CV)
             {
@@ -88,8 +114,11 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                 resFin$cvInfo <- res2$cvInfo
             }
         ans <- list(res = resFin, lambda = lambda,
-                    X = Xfd, Y = Yfd, LD=LD, data=data,
-                    Intercept=Intercept, call=call,obj=obj)        
+                    X = obj1$Xfd, Y = obj1$Yfd, LD=LD, data=obj$data,
+                    Intercept=obj1$Intercept, call=call,obj=obj, alpha=obj$alpha,
+                    optAlpha=optAlpha)
+        if (optAlpha)
+            ans$infoAlpha <- alpha$info
         class(ans) <- "funcreg"
         ans
     }
@@ -98,7 +127,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
 ### Computes all what is needed for the Fortran code.
 ### All of it is independent on the lambda's
 ####################################################
-.prepMat <- function (xfdobjList, yfdobj, betaList)    
+.prepMat2 <- function (xfdobjList, yfdobj, betaList)    
     {
         nx <- length(xfdobjList)
         n <- ncol(yfdobj$coefs)
@@ -215,7 +244,8 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                         as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
                         as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
                         as.integer(obj$ncoef), as.double(obj$lam0),
-                        as.double(obj$lam), coef=double(obj$ncoef), info=integer(1),
+                        as.double(obj$lam),as.double(obj$alpha),
+                        coef=double(obj$ncoef), info=integer(1),
                         cmat=double(obj$ncoef^2), dmat=double(obj$ncoef),
                         cmat0=double(obj$ncoef^2))
         coefvec <- res$coef
@@ -273,6 +303,10 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         ## Compute the Variance
         yhat <- eval.fd(obj$data$t, yhatfd)
         e <- obj$data$Y-yhat
+        linmodList$yhatfdobj <- .asMyfda(linmodList$yhatfdobj,
+                                                   obj$data$t, obj$data$Y)
+        linmodList$residuals <- .asMyfda(linmodList$residuals ,obj$data$t, e)
+
         ## Need to think about a more general covariance matrix
         ## The one computed is the sandwich matrix under homoscedasticity
         Cmat <-  matrix(res$cmat, ncol=obj$ncoef)
@@ -302,6 +336,38 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
         return(linmodList)
     }
 
+.asMyfda <- function(fd, t, y)
+    {
+        n <- ncol(fd$coefs)
+        y <- as.matrix(y)
+        if (n != ncol(y))
+            stop("The dimension of y does not fit the number of fda in fd")
+        if (!all(range(t)==fd$basis$rangeval))
+            stop("The range of t does not correspond to the rangeval of fd")
+        obj <- list(coefficients=fd$coefs, basis=fd$basis,
+                    lambda=NA, L=NA, link=function(x) x,
+                    tol=NA, typels=NA, addDat=FALSE,
+                    type="Linear FDA Fit",t=t,y=y,convergence=NA)
+        class(obj) <- "myfda"
+        obj
+    }
+
+
+.funcregGetAlpha <- function (obj, intAlpha=c(1e-9,1), tol=1e-7, maxit=100)
+    {
+        res <- .Fortran("optalpha",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
+                        as.double(obj$Rt),as.double(obj$Rs),as.double(obj$ipaa),
+                        as.double(obj$ipabt),as.double(obj$ipbbt),
+                        as.double(obj$Fmat),as.integer(obj$n),
+                        as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
+                        as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
+                        as.integer(obj$ncoef), as.double(obj$lam0),
+                        as.double(obj$lam), as.double(obj$ipyy),
+                        as.integer(maxit), as.double(tol), as.double(intAlpha[1]),
+                        as.double(intAlpha[2]), alpha=double(1), info=integer(1))
+        list(alpha=res$alpha, info=res$info)
+    }
+
 .funcregCV <- function (obj)
     {
         res <- .Fortran("funcregcv",as.double(obj$G),as.double(obj$H),as.double(obj$R0),
@@ -311,7 +377,7 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                         as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
                         as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
                         as.integer(obj$ncoef), as.double(obj$lam0),
-                        as.double(obj$lam), as.double(obj$ipyy),
+                        as.double(obj$lam), as.double(obj$alpha), as.double(obj$ipyy),
                         cv=double(1), info=integer(obj$n))
         list(CV = res$cv, cvInfo = res$info)
     }
@@ -324,15 +390,17 @@ funcreg <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                         as.double(obj$Fmat),as.integer(obj$n),
                         as.integer(obj$nx),as.integer(obj$k0),as.integer(obj$kb),
                         as.integer(max(obj$kb[,1])),as.integer(max(obj$kb[,2])),
-                        as.integer(obj$ncoef), as.double(obj$lam0),
-                        as.double(obj$lam), as.double(obj$ipyy),
+                        as.integer(obj$ncoef), as.double(obj$lam0), 
+                        as.double(obj$lam), as.double(obj$alpha),
+                        as.double(obj$ipyy),
                         dcv=double(1+2*obj$nx))
         res$dcv
     }
 
 
 funcregCV <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
-                      k, CstInt=FALSE, obj=NULL, ...)
+                      k, CstInt=FALSE, regularized=TRUE, alpha=1e-5, data=NULL,
+                      obj=NULL, ...)
     {
         if (!is.null(obj))
             {
@@ -344,17 +412,14 @@ funcregCV <- function(form, create_basis=create.bspline.basis, LD=2, lambda,
                     res <- .funcregCV(obj$obj)
             } else {
                 obj <- funcreg(form=form, create_basis=create_basis, LD=LD,
-                               lambda=lambda, k=k, CstInt=CstInt, CV=TRUE, ...)
+                               lambda=lambda, k=k, CstInt=CstInt, CV=TRUE,
+                               regularized=regularized, alpha=alpha, ...)
                 res <- obj$res[c("CV","cvInfo")]
             }
         ans <- res$CV
         attr(ans, "convergence") <- res$cvInfo
         ans
     }
-
-
-
-
 
 vcov.funcreg <- function(object, which, type = c("beta", "beta_t", "beta_s", "beta_st"),
                          s = NULL, t = NULL, ...)
@@ -753,6 +818,14 @@ print.funcreg <- function(x, ...)
         cat("\nCall:\n", paste(deparse(x$call), sep = "\n", collapse = "\n"),
             "\n\n", sep = "")
         cat("Mean of the functional parameters:\n")
+        if (x$optAlpha)
+            cat("Optimal regularization parameter: ", format(x$alpha, nsmall=5),
+                ifelse(x$infoAlpha==0, " (Converged)", " (Did not converged)"), "\n",
+                sep="")
+        else
+            cat("Fixed regularization parameter: ", format(x$alpha, nsmall=5), "\n",
+                sep="")
+            
         m <- summary(x)[,1,drop=FALSE]
         print.default(t(m))
         if (!is.null(x$res$CV))
@@ -777,21 +850,24 @@ as.fd.myfda <- function(x, fdnames=NULL, npoints=200, ...)
 
 
 getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
-                          k, CstInt=FALSE, ..., loglam=FALSE,
-                          method="BFGS", optimArg=list())
+                          k, regularized=TRUE, CstInt=FALSE, data=NULL, loglam=FALSE,
+                          method="BFGS", alpha=1e-5, optimArg=list(), ...)
     {
         if(loglam)
             lamtmp <- 10^lam0
         else
             lamtmp <- lam0
-        obj <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lamtmp,
-                           k=k, CstInt=CstInt, ...)$obj
+        if (!regularized)
+            alpha <- 0
+        obj <- .prepMat1(form=form, create_basis=create_basis, LD=LD,
+                         lambda=lamtmp, k=k, CstInt=CstInt, data=data)$obj
         obj$loglam <- loglam
+        obj$alpha <- alpha
         f <- function(lam, obj)
             {
                 if (obj$loglam)
                     lam <- 10^lam
-                if (obj$k0>0)
+                if (obj$k0>1)
                     {
                         obj$lam0 <- lam[1]
                         obj$lam = matrix(lam[-1], ncol=2)
@@ -806,7 +882,7 @@ getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
             {
                 if (obj$loglam)
                     lam <- 10^lam
-                if (obj$k0>0)
+                if (obj$k0>1)
                     {
                         obj$lam0 <- lam[1]
                         obj$lam = matrix(lam[-1], ncol=2)
@@ -815,12 +891,13 @@ getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
                         obj$lam <- matrix(lam,ncol=2)
                     }
                 dcv <- .dfuncregCV(obj)
-                if (obj$k0 == 0)
+                if (obj$k0 == 0 | obj$k0 == 1)
                     dcv <- dcv[-1]
                 if (obj$loglam)
                     dcv <- dcv*lam*log(10)
                 dcv
             }
+        
         optimArg <- c(optimArg, list(method=method, par=lam0, fn=f, gr=df,
                                      obj=obj))
         res <- do.call(optim, optimArg)
@@ -829,7 +906,88 @@ getFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
         else
             lambda <- res$par
         res2 <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lambda,
-                        k=k, CstInt=CstInt, CV=TRUE, ...)
+                        k=k, CstInt=CstInt, CV=TRUE, regularized=regularized, data=data, 
+                        alpha=alpha, ...)
+        res2$optimRes <- res
+        res2
+    }
+
+.OldgetFuncregLam <- function(form, create_basis=create.bspline.basis, LD=2, lam0,
+                          k, regularized=TRUE, CstInt=FALSE, data=NULL, loglam=FALSE,
+                          method="BFGS",
+                          optimArg=list(), alpha=1e-5, optAlpha=FALSE,
+                          controlAlpha=list(), ...)
+    {
+        if(loglam)
+            lamtmp <- 10^lam0
+        else
+            lamtmp <- lam0
+        if (!regularized)
+            alpha <- 0
+        obj <- .prepMat1(form=form, create_basis=create_basis, LD=LD,
+                         lambda=lamtmp, k=k, CstInt=CstInt, data=data, ...)$obj
+        obj$loglam <- loglam
+        f <- function(lam, obj, alpha, optAlpha, controlAlpha)
+            {
+                if (obj$loglam)
+                    lam <- 10^lam
+                if (obj$k0>0)
+                    {
+                        obj$lam0 <- lam[1]
+                        obj$lam = matrix(lam[-1], ncol=2)
+                    } else {
+                        obj$lam0 <- 0
+                        obj$lam <- matrix(lam,ncol=2)
+                    }
+                if (optAlpha)
+                    {
+                        alphaArg <- list(maxit=100, tol=1e-7, intAlpha=c(1e-9,1))
+                        nmsC <- names(alphaArg)                
+                        alphaArg[namc <- names(controlAlpha)] <- controlAlpha
+                        if (length(noNms <- namc[!namc %in% nmsC])) 
+                            warning("unknown names in controlAlpha: ",
+                                    paste(noNms, collapse = ", "))
+                        alphaArg$obj <- obj
+                        alpha <- do.call(.funcregGetAlpha, alphaArg)
+                        obj$alpha <- alpha$alpha
+                    }                
+                cv <- .funcregCV(obj)$CV
+                cv
+            }
+        df <- function(lam, obj, alpha, optAlpha, controlAlpha)
+            {
+                if (obj$loglam)
+                    lam <- 10^lam
+                if (obj$k0>0)
+                    {
+                        obj$lam0 <- lam[1]
+                        obj$lam = matrix(lam[-1], ncol=2)
+                    } else {
+                        obj$lam0 <- 0
+                        obj$lam <- matrix(lam,ncol=2)
+                    }
+                obj$alpha <- obj$alpha
+                dcv <- .dfuncregCV(obj)
+                if (obj$k0 == 0)
+                    dcv <- dcv[-1]
+                if (obj$loglam)
+                    dcv <- dcv*lam*log(10)
+                dcv
+            }
+        
+        optimArg <- c(optimArg, list(method=method, par=lam0, fn=f, gr=df,
+                                     obj=obj, alpha=alpha, optAlpha=optAlpha,
+                                     controlAlpha=controlAlpha))
+        if (optAlpha)
+            optimArg$gr <- NULL    
+        res <- do.call(optim, optimArg)
+        if (loglam)
+            lambda <- 10^res$par
+        else
+            lambda <- res$par
+        res2 <- funcreg(form, create_basis=create_basis, LD=LD, lambda=lambda,
+                        k=k, CstInt=CstInt, CV=TRUE, regularized=regularized, data=data, 
+                        alpha=alpha, optAlpha=optAlpha, controlAlpha=controlAlpha, ...)
         res2$optimRes <- res
         res2
     }
