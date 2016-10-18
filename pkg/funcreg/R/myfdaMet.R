@@ -84,12 +84,15 @@ plot.myfda <- function(x, which=NULL, addpoints=TRUE, npoints=100, add=FALSE, ..
                         plot(t, yhat[,1], col=1, lty=2, xlab="t", ylab="Y(t)",
                              ylim = ylim, type="l", ...)
                         if (addpoints)
-                            points(x$t, x$y[,which[1]], pch=21, col=1)                
-                        for (i in which[-1])
+                            points(x$t, x$y[,which[1]], pch=21, col=1)
+                        if (length(which)>1)
                             {
-                                lines(t,yhat[,i], col=i, lty=2)                        
-                                if (addpoints)
-                                    points(x$t, x$y[,i], pch=21, col=i)                
+                                for (i in 2:length(which))
+                                    {
+                                        lines(t,yhat[,i], col=i, lty=2)                        
+                                        if (addpoints)
+                                            points(x$t, x$y[,which[i]], pch=21, col=i)                
+                                    }
                             }
                     }
             }
